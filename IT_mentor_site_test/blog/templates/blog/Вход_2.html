@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Регистрация</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .container {
+      min-height: 100vh;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    .background img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Gradient overlay */
+    .background::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      min-height: 100px;
+    }
+
+    @media (min-width: 768px) {
+      .content {
+        width: 50%;
+      }
+
+      .content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: -1;
+      }
+    }
+
+    .title {
+      font-family: 'Inter', -apple-system, Helvetica, sans-serif;
+      font-size: 50px;
+      font-weight: 400;
+      color: black;
+      margin-bottom: 48px;
+      line-height: 50px;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .form-box {
+      border: 2px solid #000;
+      border-radius: 30px;
+      padding: 32px 40px;
+      background-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .button {
+      flex: 1;
+      height: 160px;
+      border: 2px solid #000;
+      border-radius: 30px;
+      background-color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: #000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .button:hover {
+      background-color: #f3f3f3;
+    }
+
+    .button:active {
+      background-color: #e8e8e8;
+    }
+
+    @media (min-width: 640px) {
+      .content {
+        padding: 32px;
+      }
+
+      .title {
+        font-size: 48px;
+        margin-bottom: 64px;
+      }
+
+      .buttons {
+        flex-direction: row;
+        gap: 24px;
+      }
+
+      .button {
+        min-width: 200px;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .content {
+        padding: 48px;
+      }
+
+      .title {
+        font-size: 48px;
+        margin-bottom: 40px;
+      }
+
+      .form-box {
+        padding: 48px 64px;
+      }
+
+      .buttons {
+        gap: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="background">
+      <img src="{% static 'images/1.png' %}" alt="Modern buildings">
+    </div>
+
+    <div class="content">
+      <div class="title">Регистрация</div>
+
+      <div class="form-container">
+        <div class="form-box">
+          <div class="buttons">
+            <button class="button" onclick="window.location.href='/open_3/'">Стажер</button>
+            <button class="button" onclick="window.location.href='/open_3/'">Ментор</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    //Новогодний снег
+       setTimeout(function(){
+          var s=document.createElement('div');
+          s.id='snow';
+          s.style='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:hidden;';
+          document.body.appendChild(s);
+
+          var style=document.createElement('style');
+          style.textContent='#snow .f{position:absolute;background:white;border-radius:50%;top:-10px;animation:fall linear infinite}@keyframes fall{0%{opacity:0;transform:translateY(0)}10%{opacity:0.7}90%{opacity:0.6}100%{opacity:0;transform:translateY(calc(100vh + 20px)) translateX(var(--x))}}';
+          document.head.appendChild(style);
+
+          for(var i=0;i<80;i++){
+            var f=document.createElement('div');
+            f.className='f';
+            f.style.cssText='width:'+(2+Math.random()*5)+'px;height:'+(2+Math.random()*5)+'px;left:'+Math.random()*100+'vw;--x:'+(Math.random()*80-40)+'px;animation-duration:'+(10+Math.random()*15)+'s;animation-delay:'+(Math.random()*10)+'s;opacity:'+(0.4+Math.random()*0.5)+';';
+            s.appendChild(f);
+          }
+        }, 500);
+  </script>
+</body>
+</html>
