@@ -67,16 +67,16 @@ WSGI_APPLICATION = 'IT_mentor_site_test.wsgi.application'
 
 
 
-
+SECRET_KEY='k&a8+ula-p5+9%-sr=qb(o!z%%y(sfoy7w+6niq(a7)od!b!)r   '
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': '123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -111,6 +111,8 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 
