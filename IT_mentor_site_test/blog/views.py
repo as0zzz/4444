@@ -1,10 +1,24 @@
-from django.shortcuts import render, redirect
-from django.http import HttpResponse
-import requests
 import json
+import mimetypes
+
+from django.db import transaction
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+import requests
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
-from .models import Open1, Open3
+from .models import (
+    Chat,
+    ChatAttachment,
+    ChatMessage,
+    ChatParticipant,
+    Open1,
+    Open3,
+)
 from django.contrib import messages
 
 
@@ -225,7 +239,6 @@ def check_user_in_nocodb_2(email, name, patronymic, surname=None, phone=None, pa
 
 
 
-
 # ДЕКОРАТОР
 
 
@@ -244,6 +257,220 @@ def login_required(view_func):
     return wrapper
 
 
+CHAT_USER_AVATAR = static("images/1.png")
+
+
+def get_current_open1_user(request):
+    return Open1.objects.get(id=request.session["user_id"])
+
+
+def get_open3_map_by_emails(emails):
+    if not emails:
+        return {}
+
+    profiles = Open3.objects.filter(email__in=emails)
+    return {profile.email: profile for profile in profiles}
+
+
+def get_user_display_name(user, profile_map=None):
+    profile_map = profile_map or {}
+    profile = profile_map.get(user.email)
+
+    if profile:
+        full_name = " ".join(
+            part for part in [profile.name, profile.surname] if part
+        ).strip()
+        if full_name:
+            return full_name
+
+    return user.email
+
+
+def get_user_secondary_label(user, profile_map=None):
+    profile_map = profile_map or {}
+    profile = profile_map.get(user.email)
+
+    if profile:
+        full_name = " ".join(
+            part for part in [profile.name, profile.surname] if part
+        ).strip()
+        if full_name and full_name != user.email:
+            return user.email
+
+    return "Пользователь платформы"
+
+
+def get_chat_queryset_for_user(current_user):
+    return (
+        ChatParticipant.objects
+        .filter(user=current_user, is_hidden=False)
+        .select_related("chat", "user")
+        .prefetch_related(
+            "chat__messages__attachments",
+            "chat__messages__sender",
+            "chat__participants__user",
+        )
+        .order_by("-is_pinned", "-chat__updated_at", "-chat__created_at", "-chat__id")
+    )
+
+
+def get_unread_count_for_participant(participant, current_user):
+    last_read_at = participant.last_read_at
+    unread_count = 0
+
+    for message in participant.chat.messages.all():
+        if message.sender_id == current_user.id:
+            continue
+        if last_read_at and message.created_at <= last_read_at:
+            continue
+        unread_count += 1
+
+    return unread_count
+
+
+def serialize_attachment(attachment):
+    content_type = attachment.content_type or mimetypes.guess_type(attachment.original_name)[0] or ""
+
+    return {
+        "id": attachment.id,
+        "name": attachment.original_name,
+        "url": attachment.file.url,
+        "contentType": content_type,
+        "size": attachment.size,
+        "isImage": content_type.startswith("image/"),
+    }
+
+
+def serialize_message(message, current_user):
+    if message.message_type == ChatMessage.TYPE_SYSTEM:
+        return {
+            "id": message.id,
+            "kind": "system",
+            "text": message.text,
+            "sentAt": message.created_at.isoformat(),
+        }
+
+    return {
+        "id": message.id,
+        "kind": "message",
+        "type": "outgoing" if message.sender_id == current_user.id else "incoming",
+        "text": message.text,
+        "sentAt": message.created_at.isoformat(),
+        "attachments": [serialize_attachment(item) for item in message.attachments.all()],
+    }
+
+
+def serialize_chat(participant, current_user, profile_map):
+    chat = participant.chat
+    unread_count = get_unread_count_for_participant(participant, current_user)
+
+    return {
+        "id": chat.id,
+        "title": chat.title,
+        "subtitle": chat.subtitle,
+        "unread": unread_count,
+        "pinned": participant.is_pinned,
+        "hidden": participant.is_hidden,
+        "avatar": CHAT_USER_AVATAR,
+        "messages": [serialize_message(message, current_user) for message in chat.messages.all()],
+    }
+
+
+def get_chat_state_payload(current_user):
+    participant_links = list(get_chat_queryset_for_user(current_user))
+    emails = {current_user.email}
+
+    for link in participant_links:
+        for chat_participant in link.chat.participants.all():
+            emails.add(chat_participant.user.email)
+
+    profile_map = get_open3_map_by_emails(emails)
+    chats = [serialize_chat(link, current_user, profile_map) for link in participant_links]
+    unread_count = sum(chat["unread"] for chat in chats)
+
+    return {
+        "chats": chats,
+        "unreadCount": unread_count,
+    }
+
+
+def get_chat_picker_payload(current_user):
+    users = list(Open1.objects.exclude(id=current_user.id).order_by("email"))
+    profile_map = get_open3_map_by_emails([user.email for user in users])
+
+    return [
+        {
+            "id": user.id,
+            "name": get_user_display_name(user, profile_map),
+            "role": get_user_secondary_label(user, profile_map),
+            "avatar": CHAT_USER_AVATAR,
+        }
+        for user in users
+    ]
+
+
+def get_unread_chat_count_for_user(current_user):
+    return get_chat_state_payload(current_user)["unreadCount"]
+
+
+def build_chat_response(current_user, **extra):
+    payload = {
+        "ok": True,
+        **get_chat_state_payload(current_user),
+    }
+    payload.update(extra)
+    return JsonResponse(payload)
+
+
+def parse_request_json(request):
+    try:
+        return json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def build_default_chat_title(selected_users, profile_map):
+    if len(selected_users) == 1:
+        user = selected_users[0]
+        return (
+            get_user_display_name(user, profile_map),
+            get_user_secondary_label(user, profile_map),
+        )
+
+    first_names = []
+    for user in selected_users:
+        display_name = get_user_display_name(user, profile_map)
+        first_names.append(display_name.split(" ")[0])
+
+    return (
+        f"Чат: {', '.join(first_names)}",
+        f"Участников: {len(selected_users) + 1}",
+    )
+
+
+def create_system_message(chat, text, sender=None):
+    message = ChatMessage.objects.create(
+        chat=chat,
+        sender=sender,
+        message_type=ChatMessage.TYPE_SYSTEM,
+        text=text,
+    )
+    chat.updated_at = timezone.now()
+    chat.save(update_fields=["updated_at"])
+    return message
+
+
+def add_attachments_to_message(message, uploaded_files):
+    for uploaded_file in uploaded_files:
+        content_type = uploaded_file.content_type or mimetypes.guess_type(uploaded_file.name)[0] or ""
+        ChatAttachment.objects.create(
+            message=message,
+            file=uploaded_file,
+            original_name=uploaded_file.name,
+            content_type=content_type,
+            size=uploaded_file.size or 0,
+        )
+
 
 
 
@@ -255,7 +482,7 @@ def login_required(view_func):
 
 @login_required
 def index(request):
-    user = Open1.objects.get(id=request.session['user_id'])
+    user = get_current_open1_user(request)
     return render(request, 'blog/index.html', {'user': user})
 
 
@@ -266,31 +493,231 @@ def open_2(request):
 
 @login_required
 def home(request):
-    user = Open1.objects.get(id=request.session['user_id'])
-    return render(request, 'blog/Главная страница.html', {'user': user})
+    user = get_current_open1_user(request)
+    return render(request, 'blog/Главная страница.html', {
+        'user': user,
+        'chat_unread_count': get_unread_chat_count_for_user(user),
+    })
 
 @login_required
 def profile(request):
     """Защищенная страница — только для авторизованных"""
-    user = Open3.objects.get(id=request.session['user_id'])
-    return render(request, 'blog/ЛК.html', {'user': user})
+    auth_user = get_current_open1_user(request)
+    user = Open3.objects.filter(email=auth_user.email).first()
 
+    return render(request, 'blog/ЛК.html', {
+        'user': user or auth_user,
+        'chat_unread_count': get_unread_chat_count_for_user(auth_user),
+    })
+
+@login_required
+def chat_page(request):
+    user = get_current_open1_user(request)
+    chat_state = get_chat_state_payload(user)
+    context = {
+        'chat_unread_count': chat_state["unreadCount"],
+        'chat_bootstrap': chat_state["chats"],
+        'chat_picker_users': get_chat_picker_payload(user),
+    }
+    return render(request, 'blog/chat.html', context)
 
 @login_required
 def form_1(request):
-    user = Open1.objects.get(id=request.session['user_id'])
+    user = get_current_open1_user(request)
     return render(request, 'blog/Форма_1.html', {'user': user})
 
 @login_required
 def form_2(request):
-    user = Open1.objects.get(id=request.session['user_id'])
+    user = get_current_open1_user(request)
     return render(request, 'blog/Форма_2.html', {'user': user})
 
 @login_required
 def profile_test(request):
-    user = Open1.objects.get(id=request.session['user_id'])
+    user = get_current_open1_user(request)
     return render(request, 'blog/ЛК_тест.html', {'user': user})
 
+
+@login_required
+@require_POST
+def chat_open_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+    participant.last_read_at = timezone.now()
+    participant.save(update_fields=["last_read_at"])
+
+    return build_chat_response(current_user, activeChatId=participant.chat_id)
+
+
+@login_required
+@require_POST
+def chat_create_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    participant_ids = payload.get("participant_ids") or []
+
+    try:
+        participant_ids = sorted({int(item) for item in participant_ids if int(item) != current_user.id})
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Некорректный список участников."}, status=400)
+
+    if not participant_ids:
+        return JsonResponse({"ok": False, "error": "Выберите хотя бы одного участника."}, status=400)
+
+    selected_users = list(Open1.objects.filter(id__in=participant_ids).order_by("id"))
+    if len(selected_users) != len(participant_ids):
+        return JsonResponse({"ok": False, "error": "Некоторые участники не найдены."}, status=404)
+
+    emails = [user.email for user in selected_users] + [current_user.email]
+    profile_map = get_open3_map_by_emails(emails)
+    title, subtitle = build_default_chat_title(selected_users, profile_map)
+
+    with transaction.atomic():
+        chat = Chat.objects.create(
+            title=title,
+            subtitle=subtitle,
+            created_by=current_user,
+        )
+
+        ChatParticipant.objects.create(
+            chat=chat,
+            user=current_user,
+            last_read_at=timezone.now(),
+        )
+
+        ChatParticipant.objects.bulk_create([
+            ChatParticipant(chat=chat, user=user)
+            for user in selected_users
+        ])
+
+        create_system_message(chat, f"Ментор создал группу «{title}»", sender=current_user)
+
+    return build_chat_response(current_user, activeChatId=chat.id)
+
+
+@login_required
+@require_POST
+def chat_send_message_api(request):
+    current_user = get_current_open1_user(request)
+    chat_id = request.POST.get("chat_id")
+    text = (request.POST.get("text") or "").strip()
+    uploaded_files = request.FILES.getlist("attachments")
+
+    if not chat_id:
+        return JsonResponse({"ok": False, "error": "Чат не указан."}, status=400)
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    if not text and not uploaded_files:
+        return JsonResponse({"ok": False, "error": "Сообщение пустое."}, status=400)
+
+    if len(uploaded_files) > 10:
+        return JsonResponse(
+            {"ok": False, "error": "К одному сообщению можно прикрепить максимум 10 файлов."},
+            status=400,
+        )
+
+    with transaction.atomic():
+        message = ChatMessage.objects.create(
+            chat=participant.chat,
+            sender=current_user,
+            message_type=ChatMessage.TYPE_USER,
+            text=text,
+        )
+        add_attachments_to_message(message, uploaded_files)
+        participant.chat.updated_at = timezone.now()
+        participant.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(chat=participant.chat, user=current_user).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=participant.chat_id)
+
+
+@login_required
+@require_POST
+def chat_toggle_pin_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+    participant.is_pinned = not participant.is_pinned
+    participant.save(update_fields=["is_pinned"])
+
+    return build_chat_response(current_user, activeChatId=participant.chat_id)
+
+
+@login_required
+@require_POST
+def chat_rename_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+    title = (payload.get("title") or "").strip()
+
+    if not title:
+        return JsonResponse({"ok": False, "error": "Введите новое название чата."}, status=400)
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    participant.chat.title = title
+    participant.chat.updated_at = timezone.now()
+    participant.chat.save(update_fields=["title", "updated_at"])
+
+    return build_chat_response(current_user, activeChatId=participant.chat_id)
+
+
+@login_required
+@require_POST
+def chat_delete_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    display_name = get_user_display_name(current_user, get_open3_map_by_emails([current_user.email]))
+
+    with transaction.atomic():
+        create_system_message(participant.chat, f"{display_name} вышел из чата", sender=current_user)
+        participant.is_hidden = True
+        participant.is_active = False
+        participant.is_pinned = False
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
+
+    return build_chat_response(current_user)
 
 
 
