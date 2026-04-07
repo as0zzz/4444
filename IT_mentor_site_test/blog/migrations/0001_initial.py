@@ -27,41 +27,31 @@ class Migration(migrations.Migration):
                 'ordering': ['-updated_at', '-created_at', '-id'],
             },
         ),
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.CreateModel(
-                    name='Open1',
-                    fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('email', models.EmailField(max_length=254, unique=True)),
-                        ('pa', models.CharField(max_length=255)),
-                    ],
-                    options={
-                        'db_table': 'open_1',
-                    },
-                ),
+        migrations.CreateModel(
+            name='Open1',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('email', models.EmailField(max_length=254, unique=True)),
+                ('pa', models.CharField(max_length=255)),
             ],
-            database_operations=[],
+            options={
+                'db_table': 'open_1',
+            },
         ),
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.CreateModel(
-                    name='Open3',
-                    fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('email', models.EmailField(max_length=254, unique=True)),
-                        ('name', models.CharField(max_length=100)),
-                        ('patronymic', models.CharField(blank=True, max_length=100, null=True)),
-                        ('surname', models.CharField(max_length=100)),
-                        ('phone', models.CharField(max_length=12)),
-                        ('pa', models.CharField(max_length=255)),
-                    ],
-                    options={
-                        'db_table': 'open_3',
-                    },
-                ),
+        migrations.CreateModel(
+            name='Open3',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('email', models.EmailField(max_length=254, unique=True)),
+                ('name', models.CharField(max_length=100)),
+                ('patronymic', models.CharField(blank=True, max_length=100, null=True)),
+                ('surname', models.CharField(max_length=100)),
+                ('phone', models.CharField(max_length=12)),
+                ('pa', models.CharField(max_length=255)),
             ],
-            database_operations=[],
+            options={
+                'db_table': 'open_3',
+            },
         ),
         migrations.CreateModel(
             name='ChatMessage',
