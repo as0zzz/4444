@@ -308,7 +308,7 @@
             flex-direction: column;
             gap: 0.85rem;
             max-height: 700px;
-            overflow: auto;
+            overflow-x: hidden;
             overflow-y: auto;
             padding: 6px 6px 8px;
             flex: 1;
@@ -323,6 +323,16 @@
         height: 0;
         }
 
+        .chat-meta-title,
+        .chat-meta-text,
+        .chat-panel-title strong,
+        .chat-panel-title span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .chat-item {
             width: 100%;
             border: 1px solid #ececec;
@@ -330,7 +340,7 @@
             border-radius: 22px;
             padding: 0.75rem;
             display: grid;
-            grid-template-columns: 56px 1fr auto;
+            grid-template-columns: 56px minmax(0, 1fr) auto;
             gap: 0.85rem;
             align-items: center;
             text-align: left;
@@ -478,10 +488,30 @@
         }
 
         .message-time {
-            margin-top: 0.45rem;
             font-size: 0.72rem;
             color: #7c7c7c;
             line-height: 1;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-top: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .message-edited {
+            font-size: 0.72rem;
+            line-height: 1;
+            color: #7c7c7c;
+            padding: 0.15rem 0.45rem;
+            border-radius: 999px;
+            background: rgba(124, 124, 124, 0.08);
+            display: inline-flex;
+            align-items: center;
         }
 
         .message-text {
@@ -592,6 +622,59 @@
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+        }
+
+        .chat-editing-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid rgba(222, 115, 88, 0.22);
+            border-radius: 18px;
+            background: #fff7f4;
+        }
+
+        .chat-editing-banner.show {
+            display: flex;
+        }
+
+        .chat-editing-banner-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .chat-editing-banner-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #c4644a;
+            line-height: 1.2;
+        }
+
+        .chat-editing-banner-message {
+            font-size: 0.9rem;
+            color: #6b7280;
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-editing-banner-cancel {
+            flex-shrink: 0;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.2rem 0;
+        }
+
+        .chat-editing-banner-cancel:hover {
+            color: #374151;
         }
 
         .chat-modal-overlay {
@@ -1440,8 +1523,8 @@
                         <img id="panelAvatar" src="{% static 'images/1.png' %}" alt="Аватар">
                     </div>
                     <div class="chat-panel-title">
-                        <strong id="panelTitle">Чат практики</strong>
-                        <span id="panelStatus">Активный диалог</span>
+                        <strong id="panelTitle">Нет активного чата</strong>
+                        <span id="panelStatus">Создайте чат или выберите существующий</span>
                     </div>
                 </div>
 
@@ -1454,7 +1537,18 @@
                         К последнему сообщению
                     </button>
                     <div class="chat-composer">
-                    <div class="chat-attachments" id="chatAttachments"></div>
+                        <div class="chat-editing-banner" id="chatEditingBanner">
+                            <div class="chat-editing-banner-text">
+                                <div class="chat-editing-banner-label">Редактирование сообщения</div>
+                                <div class="chat-editing-banner-message" id="chatEditingBannerMessage"></div>
+                            </div>
+
+                            <button type="button" class="chat-editing-banner-cancel" id="cancelMessageEditing">
+                                Отменить
+                            </button>
+                        </div>
+
+                        <div class="chat-attachments" id="chatAttachments"></div>
                         <div class="chat-input" id="chatInputBox">
                             <div class="chat-dropzone" id="chatDropzone">
                                 Прикрепить к чату
@@ -1605,6 +1699,66 @@
         </div>
     </div>
 
+    <div class="chat-confirm-overlay" id="deleteMessageConfirm">
+        <div class="chat-confirm-modal">
+            <div class="chat-confirm-header">
+                <h2 class="chat-confirm-title">Удалить сообщение</h2>
+
+                <button type="button" class="chat-modal-close" id="closeDeleteMessageConfirm" aria-label="Закрыть">
+                    ×
+                </button>
+            </div>
+
+            <p class="chat-confirm-text">
+                Вы уверены, что хотите удалить это сообщение? Это действие нельзя отменить.
+            </p>
+
+            <div class="chat-confirm-actions">
+                <button type="button" class="chat-confirm-cancel" id="cancelDeleteMessage">
+                    Отмена
+                </button>
+
+                <button type="button" class="chat-confirm-delete" id="confirmDeleteMessage">
+                    Удалить сообщение
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="chat-context-menu" id="chatMessageContextMenu">
+        <button type="button" class="chat-context-action" id="editMessageAction">
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 28 28" class="is-filled">
+                    <path d="M11.75 2C11.3358 2 11 2.33579 11 2.75C11 3.16421 11.3358 3.5 11.75 3.5H13.25V24.5H11.75C11.3358 24.5 11 24.8358 11 25.25C11 25.6642 11.3358 26 11.75 26H16.25C16.6642 26 17 25.6642 17 25.25C17 24.8358 16.6642 24.5 16.25 24.5H14.75V3.5H16.25C16.6642 3.5 17 3.16421 17 2.75C17 2.33579 16.6642 2 16.25 2H11.75Z"/>
+                    <path d="M6.25 6.01959H12.25V22.0196H6.25C4.45507 22.0196 3 20.5645 3 18.7696V9.26959C3 7.47467 4.45507 6.01959 6.25 6.01959Z"/>
+                    <path d="M21.75 22.0196H15.75V6.01959H21.75C23.5449 6.01959 25 7.47467 25 9.26959V18.7696C25 20.5645 23.5449 22.0196 21.75 22.0196Z"/>
+                </svg>
+            </span>
+            <span>Изменить</span>
+        </button>
+
+        <button type="button" class="chat-context-action" id="copyMessageAction">
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16">
+                    <rect x="5" y="5" width="7" height="8" rx="1.5"></rect>
+                    <path d="M4 10H3.5A1.5 1.5 0 0 1 2 8.5v-5A1.5 1.5 0 0 1 3.5 2h5A1.5 1.5 0 0 1 10 3.5V4"></path>
+                </svg>
+            </span>
+            <span>Скопировать</span>
+        </button>
+
+        <button type="button" class="chat-context-action danger" id="deleteMessageAction">
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024" class="is-filled">
+                    <path d="M864 256H736v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80H160c-17.7 0-32 14.3-32 32v32c0 4.4 3.6 8 8 8h60.4l24.7 523c1.6 34.1 29.8 61 63.9 61h454c34.2 0 62.3-26.8 63.9-61l24.7-523H888c4.4 0 8-3.6 8-8v-32c0-17.7-14.3-32-32-32zm-200 0H360v-72h304v72z"/>
+                </svg>
+            </span>
+            <span>Удалить</span>
+        </button>
+    </div>
+
+
     <div class="chat-confirm-overlay" id="attachmentLimitModal">
         <div class="chat-confirm-modal">
             <div class="chat-confirm-header">
@@ -1652,7 +1806,9 @@
             send: "/chat/api/send/",
             togglePin: "/chat/api/toggle-pin/",
             rename: "/chat/api/rename/",
-            delete: "/chat/api/delete/"
+            delete: "/chat/api/delete/",
+            messageUpdate: "/chat/api/message/update/",
+            messageDelete: "/chat/api/message/delete/",
         };
 
         // Data helpers
@@ -1737,6 +1893,9 @@
                     sentAt: message.sentAt || parseLegacySentAt(message.time)
                 }),
                 id: Number(message.id) || null,
+                edited: Boolean(message.edited),
+                editedAt: message.editedAt || null,
+                deleted: Boolean(message.deleted),
                 attachments: Array.isArray(message.attachments)
                     ? message.attachments.map((attachment) => ({
                         id: Number(attachment.id) || null,
@@ -1749,6 +1908,7 @@
                     : [],
             };
         }
+
 
         function normalizeChat(chat) {
             return {
@@ -1785,48 +1945,76 @@
             return tokenField ? tokenField.value : getCookie("csrftoken");
         }
 
-        async function postJson(url, payload) {
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCsrfToken(),
-                },
-                credentials: "same-origin",
-                body: JSON.stringify(payload),
-            });
+        async function parseApiResponse(response) {
+            const contentType = response.headers.get("content-type") || "";
+            const isJson = contentType.includes("application/json");
+
+            if (!isJson) {
+                if (response.redirected && response.url) {
+                    window.location.href = response.url;
+                    throw new Error("Сессия истекла. Войдите снова.");
+                }
+
+                const text = await response.text();
+
+                if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+                    window.location.href = "/open_1/";
+                    throw new Error("Сессия истекла. Войдите снова.");
+                }
+
+                throw new Error("Сервер вернул неожиданный ответ.");
+            }
 
             const data = await response.json();
 
             if (!response.ok || data.ok === false) {
+                if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+
+                    throw new Error(data.error || "Сессия истекла. Войдите снова.");
+                }
+
                 throw new Error(data.error || "Не удалось выполнить действие.");
             }
 
             return data;
         }
 
+        async function postJson(url, payload) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                credentials: "same-origin",
+                body: JSON.stringify(payload),
+            });
+
+            return parseApiResponse(response);
+        }
+
         async function postFormData(url, formData) {
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
+                    "Accept": "application/json",
                     "X-CSRFToken": getCsrfToken(),
                 },
                 credentials: "same-origin",
                 body: formData,
             });
 
-            const data = await response.json();
-
-            if (!response.ok || data.ok === false) {
-                throw new Error(data.error || "Не удалось отправить сообщение.");
-            }
-
-            return data;
+            return parseApiResponse(response);
         }
 
         function syncChatState(data, options = {}) {
             const previousActiveId = CHAT_DATA[activeChatIndex]?.id ?? null;
             const nextActiveId = options.activeChatId ?? data.activeChatId ?? previousActiveId;
+            const currentEditingId = editingMessageId;
 
             CHAT_DATA = Array.isArray(data.chats) ? data.chats.map(normalizeChat) : [];
 
@@ -1844,6 +2032,16 @@
             renderChatList(chatSearch.value);
             renderActiveChat(options.scrollToBottom !== false);
             updateUnreadBadges();
+
+            if (currentEditingId) {
+                const stillExists = CHAT_DATA.some((chat) =>
+                    Array.isArray(chat.messages) && chat.messages.some((message) => message.id === currentEditingId)
+                );
+
+                if (!stillExists) {
+                    hideEditingBanner();
+                }
+            }
         }
 
         function handleRequestError(error) {
@@ -1857,6 +2055,8 @@
         let activeChatIndex = 0;
         let pendingAttachments = [];
         let contextChatIndex = null;
+        let contextMessageId = null;
+        let editingMessageId = null;
 
         // DOM references
         const chatForm = document.getElementById("chatForm");
@@ -1868,6 +2068,9 @@
         const chatSearch = document.getElementById("chatSearch");
         const chatMessageInput = document.getElementById("chatMessageInput");
         const chatMessageSizer = document.getElementById("chatMessageSizer");
+        const chatEditingBanner = document.getElementById("chatEditingBanner");
+        const chatEditingBannerMessage = document.getElementById("chatEditingBannerMessage");
+        const cancelMessageEditing = document.getElementById("cancelMessageEditing");
         const chatHeaderBadge = document.getElementById("chatHeaderBadge");
         const chatAttachments = document.getElementById("chatAttachments");
         const chatDropzone = document.getElementById("chatDropzone");
@@ -1901,6 +2104,25 @@
         const attachmentLimitText = document.getElementById("attachmentLimitText");
         const closeAttachmentLimitModalBtn = document.getElementById("closeAttachmentLimitModal");
         const confirmAttachmentLimitModalBtn = document.getElementById("confirmAttachmentLimitModal");
+        const chatMessageContextMenu = document.getElementById("chatMessageContextMenu");
+        const editMessageAction = document.getElementById("editMessageAction");
+        const copyMessageAction = document.getElementById("copyMessageAction");
+        const deleteMessageAction = document.getElementById("deleteMessageAction");
+        const deleteMessageConfirm = document.getElementById("deleteMessageConfirm");
+        const closeDeleteMessageConfirm = document.getElementById("closeDeleteMessageConfirm");
+        const cancelDeleteMessage = document.getElementById("cancelDeleteMessage");
+        const confirmDeleteMessage = document.getElementById("confirmDeleteMessage");
+
+        function hideEditingBanner() {
+            editingMessageId = null;
+            chatEditingBanner.classList.remove("show");
+            chatEditingBannerMessage.textContent = "";
+        }
+
+        function showEditingBanner(messageText) {
+            chatEditingBannerMessage.textContent = messageText || "Без текста";
+            chatEditingBanner.classList.add("show");
+        }
 
         // Chat bottom
         function updateScrollBottomButton() {
@@ -2045,6 +2267,10 @@
             let lastDividerLabel = null;
 
             messages.forEach(message => {
+                if (message.deleted) {
+                    return;
+                }
+
                 const dividerLabel = formatDateDividerLabel(message.sentAt);
 
                 if (dividerLabel !== lastDividerLabel) {
@@ -2096,10 +2322,13 @@
 
             return `
                 <div class="message-row ${item.type === 'outgoing' ? 'outgoing' : ''}">
-                    <div class="message-bubble">
+                    <div class="message-bubble" data-message-id="${item.id}">
                         <div class="message-text">${escapeHtml(item.text)}</div>
                         ${attachmentsMarkup}
-                        <div class="message-time">${formatMessageTime(item.sentAt)}</div>
+                        <div class="message-meta">
+                            <span class="message-time">${formatMessageTime(item.sentAt)}</span>
+                            ${item.edited ? `<span class="message-edited">Изменено</span>` : ""}
+                        </div>
                     </div>
                 </div>
             `;
@@ -2114,6 +2343,7 @@
 
                 if (fallbackIndex === -1) {
                     activeChatIndex = -1;
+                    hideEditingBanner();
                     panelAvatar.src = "{% static 'images/1.png' %}";
                     panelTitle.textContent = "Нет активного чата";
                     panelStatus.textContent = "Создайте чат или выберите существующий";
@@ -2142,6 +2372,21 @@
                 .map(renderTimelineItem)
                 .join("");
 
+            document.querySelectorAll(".message-bubble[data-message-id]").forEach((bubble) => {
+                bubble.addEventListener("contextmenu", (event) => {
+                    event.preventDefault();
+
+                    const messageId = Number(bubble.dataset.messageId);
+                    const message = CHAT_DATA[activeChatIndex]?.messages?.find((item) => item.id === messageId);
+
+                    if (!message || message.type !== "outgoing") {
+                        return;
+                    }
+
+                    openMessageContextMenu(messageId, event.clientX, event.clientY);
+                });
+            });
+
             if (shouldScroll) {
                 scrollMessagesToBottom();
             }
@@ -2152,6 +2397,7 @@
                 return;
             }
 
+            hideEditingBanner();
             activeChatIndex = index;
             closeChatContextMenu();
 
@@ -2201,6 +2447,31 @@
             }
 
             persistChats();
+        }
+
+        function removeMessageFromLocalState(chatId, messageId) {
+            const chatIndex = CHAT_DATA.findIndex((chat) => chat.id === chatId);
+
+            if (chatIndex === -1) {
+                return false;
+            }
+
+            const chat = CHAT_DATA[chatIndex];
+            const nextMessages = chat.messages.filter((item) => item.id !== messageId);
+            const changed = nextMessages.length !== chat.messages.length;
+
+            if (!changed) {
+                return false;
+            }
+
+            chat.messages = nextMessages;
+
+            if (activeChatIndex === chatIndex) {
+                renderActiveChat(false);
+            }
+
+            renderChatList(chatSearch.value);
+            return true;
         }
 
         // Context menu and dialog controls
@@ -2259,6 +2530,84 @@
             }
         }
 
+        function startEditingMessage() {
+            if (!contextMessageId || activeChatIndex < 0) return;
+
+            const message = CHAT_DATA[activeChatIndex].messages.find(item => item.id === contextMessageId);
+            if (!message) return;
+
+            editingMessageId = contextMessageId;
+            pendingAttachments = [];
+            renderPendingAttachments();
+            chatMessageInput.value = message.text || "";
+            autoResizeTextarea();
+            showEditingBanner(message.text || "");
+            chatMessageInput.focus();
+            closeMessageContextMenu();
+        }
+
+        editMessageAction.addEventListener("click", startEditingMessage);
+
+        async function copyMessageText() {
+            if (!contextMessageId || activeChatIndex < 0) return;
+
+            const message = CHAT_DATA[activeChatIndex].messages.find(item => item.id === contextMessageId);
+            if (!message) return;
+
+            await navigator.clipboard.writeText(message.text || "");
+            closeMessageContextMenu();
+        }
+
+        copyMessageAction.addEventListener("click", copyMessageText);
+
+        function openDeleteMessageConfirmDialog() {
+            if (!contextMessageId) return;
+            deleteMessageConfirm.dataset.messageId = String(contextMessageId);
+            deleteMessageConfirm.classList.add("show");
+            closeMessageContextMenu(false);
+        }
+
+        async function deleteMessageByContext() {
+            const messageIdFromDialog = Number(deleteMessageConfirm.dataset.messageId || 0);
+            const deletingMessageId = messageIdFromDialog || contextMessageId;
+
+            if (!deletingMessageId) {
+                closeDeleteMessageConfirmDialog();
+                return;
+            }
+
+            const currentChatId = CHAT_DATA[activeChatIndex]?.id ?? null;
+
+            try {
+                const data = await postJson(CHAT_API.messageDelete, {
+                    message_id: deletingMessageId,
+                });
+
+                if (editingMessageId === deletingMessageId) {
+                    hideEditingBanner();
+                    resetTextarea();
+                }
+
+                syncChatState(data, { activeChatId: currentChatId, scrollToBottom: false });
+                removeMessageFromLocalState(currentChatId, deletingMessageId);
+
+                closeDeleteMessageConfirmDialog();
+            } catch (error) {
+                handleRequestError(error);
+            }
+        }
+
+        deleteMessageAction.addEventListener("click", openDeleteMessageConfirmDialog);
+        closeDeleteMessageConfirm.addEventListener("click", closeDeleteMessageConfirmDialog);
+        cancelDeleteMessage.addEventListener("click", closeDeleteMessageConfirmDialog);
+        confirmDeleteMessage.addEventListener("click", deleteMessageByContext);
+
+        function closeDeleteMessageConfirmDialog() {
+            deleteMessageConfirm.classList.remove("show");
+            deleteMessageConfirm.dataset.messageId = "";
+            contextMessageId = null;
+        }
+
         function escapeHtml(value) {
             return String(value ?? "")
                 .replace(/&/g, "&amp;")
@@ -2304,6 +2653,29 @@
             requestAnimationFrame(() => {
                 renameChatInput.focus();
                 renameChatInput.select();
+            });
+        }
+
+        function closeMessageContextMenu(resetSelection = true) {
+            chatMessageContextMenu.classList.remove("show");
+
+            if (resetSelection) {
+                contextMessageId = null;
+            }
+        }
+
+        function openMessageContextMenu(messageId, x, y) {
+            contextMessageId = messageId;
+            chatMessageContextMenu.classList.add("show");
+
+            requestAnimationFrame(() => {
+                const menuWidth = chatMessageContextMenu.offsetWidth;
+                const menuHeight = chatMessageContextMenu.offsetHeight;
+                const left = Math.min(x, window.innerWidth - menuWidth - 12);
+                const top = Math.min(y, window.innerHeight - menuHeight - 12);
+
+                chatMessageContextMenu.style.left = `${Math.max(12, left)}px`;
+                chatMessageContextMenu.style.top = `${Math.max(12, top)}px`;
             });
         }
 
@@ -2429,6 +2801,10 @@
             if (!event.target.closest(".chat-context-menu") && !event.target.closest(".chat-item")) {
                 closeChatContextMenu();
             }
+
+            if (!event.target.closest("#chatMessageContextMenu") && !event.target.closest(".message-bubble")) {
+                closeMessageContextMenu();
+            }
         });
 
         document.addEventListener("keydown", (event) => {
@@ -2463,6 +2839,21 @@
 
             if (attachMenu.classList.contains("show")) {
                 attachMenu.classList.remove("show");
+            }
+
+            if (deleteMessageConfirm.classList.contains("show")) {
+                closeDeleteMessageConfirmDialog();
+                return;
+            }
+
+            if (chatMessageContextMenu.classList.contains("show")) {
+                closeMessageContextMenu();
+                return;
+            }
+
+            if (chatEditingBanner.classList.contains("show")) {
+                hideEditingBanner();
+                resetTextarea();
             }
         });
 
@@ -2652,6 +3043,26 @@
                 return;
             }
 
+            if (editingMessageId) {
+                try {
+                    const activeChatId = CHAT_DATA[activeChatIndex].id;
+                    const editingId = editingMessageId;
+                    const data = await postJson(CHAT_API.messageUpdate, {
+                        message_id: editingId,
+                        text: value,
+                    });
+
+                    hideEditingBanner();
+                    resetTextarea();
+                    syncChatState(data, { activeChatId, scrollToBottom: false });
+                    chatMessageInput.focus();
+                } catch (error) {
+                    handleRequestError(error);
+                }
+
+                return;
+            }
+
             const activeChatId = CHAT_DATA[activeChatIndex].id;
             const formData = new FormData();
             formData.append("chat_id", activeChatId);
@@ -2663,6 +3074,7 @@
 
             try {
                 const data = await postFormData(CHAT_API.send, formData);
+                hideEditingBanner();
                 resetTextarea();
                 pendingAttachments = [];
                 renderPendingAttachments();
@@ -2675,6 +3087,11 @@
 
         closeAttachmentLimitModalBtn.addEventListener("click", closeAttachmentLimitModal);
         confirmAttachmentLimitModalBtn.addEventListener("click", closeAttachmentLimitModal);
+        cancelMessageEditing.addEventListener("click", () => {
+            hideEditingBanner();
+            resetTextarea();
+            chatMessageInput.focus();
+        });
 
         attachmentLimitModal.addEventListener("click", (event) => {
             if (event.target === attachmentLimitModal) {
@@ -2740,8 +3157,8 @@
         });
 
         document.addEventListener("click", (event) => {
-            if (!event.target.closest(".chat-plus-wrap")) {
-                attachMenu.classList.remove("show");
+            if (!event.target.closest(".chat-message-context-menu") && !event.target.closest(".message-bubble")) {
+                closeMessageContextMenu();
             }
         });
 
