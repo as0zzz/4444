@@ -249,6 +249,20 @@ def login_required(view_func):
 
         if not request.session.get('is_authenticated'):
             print("Нет авторизации, редирект на login")
+            expects_json = (
+                request.path.startswith('/chat/api/')
+                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('Accept', '')
+            )
+
+            if expects_json:
+                return JsonResponse({
+                    "ok": False,
+                    "error": "Сессия истекла. Войдите снова.",
+                    "code": "AUTH_REQUIRED",
+                    "redirect": "/open_1/",
+                }, status=401)
+
             return redirect('open_1')
 
         print("Авторизация есть, показываем страницу")
@@ -356,6 +370,9 @@ def serialize_message(message, current_user):
         "type": "outgoing" if message.sender_id == current_user.id else "incoming",
         "text": message.text,
         "sentAt": message.created_at.isoformat(),
+        "edited": message.is_edited,
+        "editedAt": message.edited_at.isoformat() if message.edited_at else None,
+        "deleted": message.is_deleted,
         "attachments": [serialize_attachment(item) for item in message.attachments.all()],
     }
 
@@ -718,6 +735,120 @@ def chat_delete_api(request):
         participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
 
     return build_chat_response(current_user)
+
+
+@login_required
+@require_POST
+def chat_update_message_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    message_id = payload.get("message_id")
+    text = (payload.get("text") or "").strip()
+
+    if not text:
+        return JsonResponse({"ok": False, "error": "Текст сообщения пустой."}, status=400)
+
+    message = get_object_or_404(
+        ChatMessage,
+        id=message_id,
+        sender=current_user,
+        message_type=ChatMessage.TYPE_USER,
+        is_deleted=False,
+    )
+
+    if message.text == text:
+        return build_chat_response(current_user, activeChatId=message.chat_id)
+
+    with transaction.atomic():
+        message.text = text
+        message.is_edited = True
+        message.edited_at = timezone.now()
+        message.save(update_fields=["text", "is_edited", "edited_at"])
+
+        message.chat.updated_at = timezone.now()
+        message.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(chat=message.chat, user=current_user).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=message.chat_id)
+
+
+@login_required
+@require_POST
+def chat_delete_message_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    message_id = payload.get("message_id")
+
+    message = get_object_or_404(
+        ChatMessage,
+        id=message_id,
+        sender=current_user,
+        message_type=ChatMessage.TYPE_USER,
+        is_deleted=False,
+    )
+
+    chat_id = message.chat_id
+
+    with transaction.atomic():
+        for attachment in message.attachments.all():
+            if attachment.file:
+                attachment.file.delete(save=False)
+
+        message.delete()
+        message.chat.updated_at = timezone.now()
+        message.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(chat_id=chat_id, user=current_user).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=chat_id)
+
+
+@login_required
+@require_POST
+def chat_delete_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    display_name = get_user_display_name(
+        current_user,
+        get_open3_map_by_emails([current_user.email])
+    )
+
+    chat = participant.chat
+
+    with transaction.atomic():
+        participant.is_hidden = True
+        participant.is_active = False
+        participant.is_pinned = False
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
+
+        has_active_participants = ChatParticipant.objects.filter(
+            chat=chat,
+            is_active=True,
+            is_hidden=False,
+        ).exists()
+
+        if has_active_participants:
+            create_system_message(chat, f"{display_name} вышел из чата", sender=current_user)
+        else:
+            for attachment in ChatAttachment.objects.filter(message__chat=chat):
+                if attachment.file:
+                    attachment.file.delete(save=False)
+
+            chat.delete()
+
+    return build_chat_response(current_user)
+
+
 
 
 
