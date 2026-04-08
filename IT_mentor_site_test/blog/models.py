@@ -82,6 +82,11 @@ class ChatMessage(models.Model):
     text = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "chat_message"
         ordering = ["created_at", "id"]
