@@ -755,7 +755,7 @@
 <!--            </div>-->
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Поиск по названию...">
-                <button id="resetBtn" class="sign-to-search">&#x2717;</button>
+                <button id="resetBtn" class="sign-to-search">&#x2716;</button>
             </div>
             <div id="noResults" style="display: none;">Ничего не найдено</div>
 
@@ -1056,19 +1056,30 @@
                 return;
             }
 
+<!--            cardsGrid.innerHTML = eventsToShow.map(event => `-->
+<!--                <a href="/event/${event.id}" class="card">-->
+<!--                    <div class="card-image-container">-->
+<!--                        <img src="${event.image}" alt="Event" class="card-image ${event.restricted ? 'restricted' : ''}">-->
+<!--                        <div class="card-overlay"></div>-->
+<!--                        ${event.restricted ? `-->
+<!--                            <div class="card-restricted">-->
+<!--                                <div>-->
+<!--                                    <p>Доступно с</p>-->
+<!--                                    <p>3 курса</p>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        ` : ''}-->
+<!--                        <div class="card-photo-label">Фото</div>-->
+<!--                    </div>-->
+<!--                    <h3 class="card-title">${event.title}</h3>-->
+<!--                </a>-->
+<!--            `).join('');-->
+
             cardsGrid.innerHTML = eventsToShow.map(event => `
                 <a href="/event/${event.id}" class="card">
                     <div class="card-image-container">
-                        <img src="${event.image}" alt="Event" class="card-image ${event.restricted ? 'restricted' : ''}">
+                        <img src="${event.image}" alt="${event.title}" class="card-image ${event.restricted ? 'restricted' : ''}">
                         <div class="card-overlay"></div>
-                        ${event.restricted ? `
-                            <div class="card-restricted">
-                                <div>
-                                    <p>Доступно с</p>
-                                    <p>3 курса</p>
-                                </div>
-                            </div>
-                        ` : ''}
                         <div class="card-photo-label">Фото</div>
                     </div>
                     <h3 class="card-title">${event.title}</h3>
