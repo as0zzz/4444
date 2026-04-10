@@ -142,18 +142,16 @@
             position: absolute;
             top: -0.5rem;
             right: -0.5rem;
-            min-width: 1.25rem;
+            width: 1.25rem;
             height: 1.25rem;
-            padding: 0 0.3rem;
             background-color: #FF0000;
-            border-radius: 999px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            line-height: 1;
         }
 
         .mobile-search {
@@ -443,6 +441,7 @@
             background-color: var(--bg-gray);
             border-radius: 1.875rem;
             padding: 1.5rem 2rem;
+            margin-top: 30px;
         }
 
         .filter-title {
@@ -686,6 +685,63 @@
                 font-size: 1.25rem;
             }
         }
+
+        /* BUTTON */
+        .cta-button {
+            background-color: #DE7358;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-family: 'Inter', -apple-system, Roboto, sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-decoration: none;
+        }
+
+        .cta-button:hover {
+            background-color: #C95F46;
+        }
+
+        @media (max-width: 768px) {
+            .cta-button {
+                padding: 15px 30px;
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .cta-button {
+                width: auto;
+                margin-top: 50px;
+            }
+        }
+
+        .event-card {
+            display: block;
+        }
+
+        .sign-to-search {
+            padding: 5px 10px;
+            background-color: white;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 25px;
+            transition: color 0.3s;
+            font-weight: 900;
+        }
+
+        .sign-to-search:hover {
+            color: grey;
+        }
     </style>
 </head>
 <body>
@@ -694,9 +750,14 @@
         <div class="header-container">
             <a href="/home/" class="logo">Logo</a>
 
+<!--            <div class="search-container">-->
+<!--                <input type="text" id="searchInput" placeholder="Поиск по названию...">-->
+<!--            </div>-->
             <div class="search-container">
-                <input type="text" placeholder="Поиск..." id="searchDesktop">
+                <input type="text" id="searchInput" placeholder="Поиск по названию...">
+                <button id="resetBtn" class="sign-to-search">&#x2717;</button>
             </div>
+            <div id="noResults" style="display: none;">Ничего не найдено</div>
 
             <div class="header-buttons">
                 <a href="/profile/" class="btn-header">Профиль</a>
@@ -704,20 +765,17 @@
                     {% csrf_token %}
                     <button type="submit" class="btn-header">Выйти</button>
                 </form>
+
                 <a href="/chat/" class="btn-header" style="position: relative;">
                     Чат
-                    <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
+                <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
                 </a>
             </div>
         </div>
 
-        <div class="mobile-search">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input type="text" placeholder="Поиск..." id="searchMobile" autocomplete="off" spellcheck="false" maxlength="100">
-        </div>
+<!--        <div class="mobile-search">-->
+<!--            <input type="text" placeholder="Поиск..." id="searchInput" autocomplete="off" spellcheck="false" maxlength="100">-->
+<!--        </div>-->
     </header>
 
     <!-- HERO SECTION -->
@@ -800,6 +858,7 @@
         <div class="layout-container">
             <!-- SIDEBAR -->
             <aside class="sidebar" id="sidebar">
+                <a href="{% url 'form_2' %}" class="cta-button">+ Создать мероприятие</a>
                 <div class="filter-panel">
                     <h3 class="filter-title">Фильтр</h3>
 
@@ -880,11 +939,15 @@
             </aside>
 
             <!-- MAIN CONTENT GRID -->
+<!--            <a href="{% url 'form_2' %}" class="btn btn-primary">+ Создать мероприятие</a>-->
+
+
             <main class="main-content">
                 <div class="cards-grid" id="cardsGrid">
                     <!-- Cards will be generated by JavaScript -->
                 </div>
             </main>
+
         </div>
     </div>
 
@@ -898,80 +961,84 @@
     <!-- JAVASCRIPT -->
     <script>
         // Extended Data with filter attributes
-        const EVENTS = [
-            { 
-                id: 1, 
-                image: "{% static 'images/4.png' %}",
-                restricted: false,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "russian",
-                    organization: "practice",
-                    field: "development"
-                }
-            },
-            { 
-                id: 2, 
-                image: "{% static 'images/4.png' %}",
-                restricted: true,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "english",
-                    organization: "online",
-                    field: "analytics"
-                }
-            },
-            { 
-                id: 3, 
-                image: "{% static 'images/4.png' %}",
-                restricted: false,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "russian",
-                    organization: "excursion",
-                    field: "development"
-                }
-            },
-            { 
-                id: 4, 
-                image: "{% static 'images/4.png' %}",
-                restricted: false,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "any",
-                    organization: "hackathon",
-                    field: "development"
-                }
-            },
-            { 
-                id: 5, 
-                image: "{% static 'images/4.png' %}",
-                restricted: true,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "russian",
-                    organization: "practice",
-                    field: "security"
-                }
-            },
-            { 
-                id: 6, 
-                image: "{% static 'images/4.png' %}",
-                restricted: false,
-                title: "Информация о практике",
-                filters: {
-                    direction: "events",
-                    language: "english",
-                    organization: "online",
-                    field: "development"
-                }
-            },
-        ];
+<!--        const EVENTS = [-->
+<!--            { -->
+<!--                id: 1, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "practice",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 2, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: true,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "english",-->
+<!--                    organization: "online",-->
+<!--                    field: "analytics"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 3, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "excursion",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 4, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "any",-->
+<!--                    organization: "hackathon",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 5, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: true,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "practice",-->
+<!--                    field: "security"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 6, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "english",-->
+<!--                    organization: "online",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--        ];-->
+
+        const EVENTS = {{ events_json|safe }};
+        console.log('EVENTS:', EVENTS);  // ← отладка
+        console.log('Количество:', EVENTS.length);
 
         let activeFilters = {
             direction: [],
@@ -983,14 +1050,14 @@
         // Render cards
         function renderCards(eventsToShow = EVENTS) {
             const cardsGrid = document.getElementById('cardsGrid');
-            
+
             if (eventsToShow.length === 0) {
                 cardsGrid.innerHTML = '<div class="no-results">По выбранным фильтрам не найдено результатов</div>';
                 return;
             }
 
             cardsGrid.innerHTML = eventsToShow.map(event => `
-                <a href="/form_1/" class="card">
+                <a href="/event/${event.id}" class="card">
                     <div class="card-image-container">
                         <img src="${event.image}" alt="Event" class="card-image ${event.restricted ? 'restricted' : ''}">
                         <div class="card-overlay"></div>
@@ -1031,35 +1098,32 @@
             console.log('Applied filters:', { directions, languages, organizations, fields });
         }
 
-        // Reset filters
-        function resetFilters() {
-            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            renderCards(EVENTS);
-            console.log('Filters reset');
-        }
+<!--        // Reset filters-->
+<!--        function resetFilters() {-->
+<!--            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {-->
+<!--                checkbox.checked = false;-->
+<!--            });-->
+<!--            renderCards(EVENTS);-->
+<!--            console.log('Filters reset');-->
+<!--        }-->
 
-        // Event listeners
-        document.getElementById('applyFilters').addEventListener('click', applyFilters);
-        document.getElementById('resetFilters').addEventListener('click', resetFilters);
+<!--        // Event listeners-->
+<!--        document.getElementById('applyFilters').addEventListener('click', applyFilters);-->
+<!--        document.getElementById('resetFilters').addEventListener('click', resetFilters);-->
 
-        // Filter toggle on mobile
-        const filterToggle = document.getElementById('filterToggle');
-        const sidebar = document.getElementById('sidebar');
+<!--        // Filter toggle on mobile-->
+<!--        const filterToggle = document.getElementById('filterToggle');-->
+<!--        const sidebar = document.getElementById('sidebar');-->
 
-        filterToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('hidden');
-        });
+<!--        filterToggle.addEventListener('click', () => {-->
+<!--            sidebar.classList.toggle('hidden');-->
+<!--        });-->
 
-        // Logo link
-        document.querySelector('.logo').addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = '/home/';
-        });
-
-        // Initialize
-        renderCards();
+<!--        // Logo link-->
+<!--        document.querySelector('.logo').addEventListener('click', (e) => {-->
+<!--            e.preventDefault();-->
+<!--            window.location.href = '/home/';-->
+<!--        });-->
 
 
 
@@ -1078,6 +1142,41 @@
 
 
 
+
+
+
+
+
+// Поиск в реальном времени (при каждом вводе символа)
+function realtimeSearch() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    const noResults = document.getElementById('noResults');
+
+    if (query === '') {
+        renderCards(EVENTS);
+        noResults.style.display = 'none';
+    } else {
+        const filtered = EVENTS.filter(event =>
+            event.title.toLowerCase().includes(query)
+        );
+        renderCards(filtered);
+        noResults.style.display = filtered.length === 0 ? 'block' : 'none';
+    }
+}
+
+// Сброс поиска
+function resetSearch() {
+    document.getElementById('searchInput').value = '';
+    renderCards(EVENTS);
+    document.getElementById('noResults').style.display = 'none';
+}
+
+// Навешиваем события
+document.getElementById('searchInput').addEventListener('input', realtimeSearch);
+document.getElementById('resetBtn').addEventListener('click', resetSearch);
+
+// Загружаем все карточки
+renderCards();
 
 
 
