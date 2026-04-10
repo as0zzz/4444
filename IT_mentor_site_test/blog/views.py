@@ -1,3 +1,15 @@
+from django.shortcuts import render, redirect
+from django.http import HttpResponse
+import requests
+import json
+from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from .models import Open1, Open3, Event
+from django.contrib import messages
+from .forms import ProfileForm, EventForm
+from django.templatetags.static import static
+from django.db.models import Q
+
 import json
 import mimetypes
 
@@ -20,6 +32,7 @@ from .models import (
     Open3,
 )
 from django.contrib import messages
+
 
 
 def open_1(request):
@@ -239,6 +252,7 @@ def check_user_in_nocodb_2(email, name, patronymic, surname=None, phone=None, pa
 
 
 
+
 # ДЕКОРАТОР
 
 
@@ -249,20 +263,6 @@ def login_required(view_func):
 
         if not request.session.get('is_authenticated'):
             print("Нет авторизации, редирект на login")
-            expects_json = (
-                request.path.startswith('/chat/api/')
-                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
-                or 'application/json' in request.headers.get('Accept', '')
-            )
-
-            if expects_json:
-                return JsonResponse({
-                    "ok": False,
-                    "error": "Сессия истекла. Войдите снова.",
-                    "code": "AUTH_REQUIRED",
-                    "redirect": "/open_1/",
-                }, status=401)
-
             return redirect('open_1')
 
         print("Авторизация есть, показываем страницу")
@@ -271,6 +271,18 @@ def login_required(view_func):
     return wrapper
 
 
+
+
+
+
+
+
+
+
+
+
+
+#ЧАТ
 CHAT_USER_AVATAR = static("images/1.png")
 
 
@@ -370,9 +382,6 @@ def serialize_message(message, current_user):
         "type": "outgoing" if message.sender_id == current_user.id else "incoming",
         "text": message.text,
         "sentAt": message.created_at.isoformat(),
-        "edited": message.is_edited,
-        "editedAt": message.edited_at.isoformat() if message.edited_at else None,
-        "deleted": message.is_deleted,
         "attachments": [serialize_attachment(item) for item in message.attachments.all()],
     }
 
@@ -494,12 +503,11 @@ def add_attachments_to_message(message, uploaded_files):
 
 
 
-
 # ВСЕ СТРАНИЦЫ
 
 @login_required
 def index(request):
-    user = get_current_open1_user(request)
+    user = Open1.objects.get(id=request.session['user_id'])
     return render(request, 'blog/index.html', {'user': user})
 
 
@@ -510,22 +518,47 @@ def open_2(request):
 
 @login_required
 def home(request):
-    user = get_current_open1_user(request)
+    print("=== СОДЕРЖИМОЕ СЕССИИ ===")
+    print("Все ключи:", request.session.keys())
+    print("user_id:", request.session.get('user_id'))
+    print("user_type:", request.session.get('user_type'))
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('open_1')
+
+    user = Open3.objects.get(id=user_id)
+    events = Event.objects.all()  # все мероприятия пользователя
+
+    print("Количество мероприятий:", events.count())
+
+    # Преобразуем в список словарей для JSON
+    events_list = []
+    for event in events:
+        events_list.append({
+            'id': event.id,
+            'image': static(event.image) if event.image else static('images/4.png'),
+            'title': event.event_name,
+            'filters': {
+                'direction': 'events',
+                'language': event.language if hasattr(event, 'language') else 'russian',
+                'organization': event.organization_of_work,
+                'field': event.field_of_work,
+            }
+        })
+
+    print("events_list:", events_list)
+
     return render(request, 'blog/Главная страница.html', {
         'user': user,
-        'chat_unread_count': get_unread_chat_count_for_user(user),
+        'events_json': events_list,  # передаём JSON
     })
 
 @login_required
 def profile(request):
     """Защищенная страница — только для авторизованных"""
-    auth_user = get_current_open1_user(request)
-    user = Open3.objects.filter(email=auth_user.email).first()
+    user = Open3.objects.get(id=request.session['user_id'])
+    return render(request, 'blog/ЛК.html', {'user': user})
 
-    return render(request, 'blog/ЛК.html', {
-        'user': user or auth_user,
-        'chat_unread_count': get_unread_chat_count_for_user(auth_user),
-    })
 
 @login_required
 def chat_page(request):
@@ -538,20 +571,140 @@ def chat_page(request):
     }
     return render(request, 'blog/chat.html', context)
 
+
 @login_required
-def form_1(request):
-    user = get_current_open1_user(request)
-    return render(request, 'blog/Форма_1.html', {'user': user})
+def form_1(request, event_id):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    try:
+        event = Event.objects.get(id=event_id)
+    except Event.DoesNotExist:
+        return redirect('home')
+
+    return render(request, 'blog/Форма_1.html', {'event': event})
 
 @login_required
 def form_2(request):
-    user = get_current_open1_user(request)
-    return render(request, 'blog/Форма_2.html', {'user': user})
+    print("=== FORM_2 ВЫЗВАН ===")
+    print("Метод:", request.method)
+    print("POST данные:", request.POST)
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    user = Open3.objects.get(id=user_id)
+
+    if request.method == 'POST':
+        # Получаем данные из формы
+        event_name = request.POST.get('event_name')
+        event_phone = request.POST.get('event_phone')
+        event_email = request.POST.get('event_email')
+        fio = request.POST.get('fio')
+        field_of_work = request.POST.get('field_of_work')
+        organization_of_work = request.POST.get('organization_of_work')
+        event_description = request.POST.get('event_description')
+
+        # Сохраняем в БД
+        event = Event.objects.create(
+            user=user,
+            event_name=event_name,
+            event_phone=event_phone,
+            event_email=event_email,
+            fio=fio,
+            field_of_work=field_of_work,
+            organization_of_work=organization_of_work,
+            event_description=event_description,
+            language='russian',  # или можно передать из формы
+            image='images/4.png'
+        )
+
+        return redirect('home')  # или другую страницу
+
+    return render(request, 'blog/Форма_2.html')
+
+@login_required
+def form_3(request, event_id):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    try:
+        # event = Event.objects.get(id=event_id, user_id=user_id)
+        event = Event.objects.get(id=event_id)
+    except Event.DoesNotExist:
+        return redirect('home')
+
+    if request.method == 'POST':
+        event.event_name = request.POST.get('event_name')
+        event.event_phone = request.POST.get('event_phone')
+        event.event_email = request.POST.get('event_email')
+        event.fio = request.POST.get('fio')
+        event.field_of_work = request.POST.get('field_of_work')
+        event.organization_of_work = request.POST.get('organization_of_work')
+        event.event_description = request.POST.get('event_description')
+        event.save()
+        return redirect('form_1', event_id=event.id)  # ← возврат на просмотр
+
+    return render(request, 'blog/Форма_3.html', {'event': event})
 
 @login_required
 def profile_test(request):
-    user = get_current_open1_user(request)
+    user = Open1.objects.get(id=request.session['user_id'])
     return render(request, 'blog/ЛК_тест.html', {'user': user})
+
+
+@login_required
+def edit_profile(request):
+    # Получаем профиль текущего пользователя
+    user = Open1.objects.get(id=request.session['user_id'])
+    profile = user.profile
+
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('form_1')  # страница просмотра
+    else:
+        form = ProfileForm(instance=profile)
+
+    return render(request, 'Форма_2.html', {'form': form})
+
+
+@login_required
+def view_profile(request):
+    user = Open1.objects.get(id=request.session['user_id'])
+    profile = user.profile
+
+    return render(request, 'Форма_1.html', {
+        'user': user,
+        'profile': profile,
+    })
+
+
+
+def create_event(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+
+    user = Open3.objects.get(id=user_id)
+
+    if request.method == 'POST':
+        form = EventForm(request.POST)
+        if form.is_valid():
+            event = form.save(commit=False)
+            event.user = user
+            event.save()
+            return redirect('home')
+    else:
+        form = EventForm()
+
+    return render(request, 'blog/Форма_2.html', {'form': form})
+
+
+
 
 
 @login_required
@@ -735,123 +888,6 @@ def chat_delete_api(request):
         participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
 
     return build_chat_response(current_user)
-
-
-@login_required
-@require_POST
-def chat_update_message_api(request):
-    current_user = get_current_open1_user(request)
-    payload = parse_request_json(request)
-    message_id = payload.get("message_id")
-    text = (payload.get("text") or "").strip()
-
-    if not text:
-        return JsonResponse({"ok": False, "error": "Текст сообщения пустой."}, status=400)
-
-    message = get_object_or_404(
-        ChatMessage,
-        id=message_id,
-        sender=current_user,
-        message_type=ChatMessage.TYPE_USER,
-        is_deleted=False,
-    )
-
-    if message.text == text:
-        return build_chat_response(current_user, activeChatId=message.chat_id)
-
-    with transaction.atomic():
-        message.text = text
-        message.is_edited = True
-        message.edited_at = timezone.now()
-        message.save(update_fields=["text", "is_edited", "edited_at"])
-
-        message.chat.updated_at = timezone.now()
-        message.chat.save(update_fields=["updated_at"])
-        ChatParticipant.objects.filter(chat=message.chat, user=current_user).update(last_read_at=timezone.now())
-
-    return build_chat_response(current_user, activeChatId=message.chat_id)
-
-
-@login_required
-@require_POST
-def chat_delete_message_api(request):
-    current_user = get_current_open1_user(request)
-    payload = parse_request_json(request)
-    message_id = payload.get("message_id")
-
-    message = get_object_or_404(
-        ChatMessage,
-        id=message_id,
-        sender=current_user,
-        message_type=ChatMessage.TYPE_USER,
-        is_deleted=False,
-    )
-
-    chat_id = message.chat_id
-
-    with transaction.atomic():
-        for attachment in message.attachments.all():
-            if attachment.file:
-                attachment.file.delete(save=False)
-
-        message.delete()
-        message.chat.updated_at = timezone.now()
-        message.chat.save(update_fields=["updated_at"])
-        ChatParticipant.objects.filter(chat_id=chat_id, user=current_user).update(last_read_at=timezone.now())
-
-    return build_chat_response(current_user, activeChatId=chat_id)
-
-
-@login_required
-@require_POST
-def chat_delete_api(request):
-    current_user = get_current_open1_user(request)
-    payload = parse_request_json(request)
-    chat_id = payload.get("chat_id")
-
-    participant = get_object_or_404(
-        ChatParticipant,
-        chat_id=chat_id,
-        user=current_user,
-        is_hidden=False,
-        is_active=True,
-    )
-
-    display_name = get_user_display_name(
-        current_user,
-        get_open3_map_by_emails([current_user.email])
-    )
-
-    chat = participant.chat
-
-    with transaction.atomic():
-        participant.is_hidden = True
-        participant.is_active = False
-        participant.is_pinned = False
-        participant.last_read_at = timezone.now()
-        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
-
-        has_active_participants = ChatParticipant.objects.filter(
-            chat=chat,
-            is_active=True,
-            is_hidden=False,
-        ).exists()
-
-        if has_active_participants:
-            create_system_message(chat, f"{display_name} вышел из чата", sender=current_user)
-        else:
-            for attachment in ChatAttachment.objects.filter(message__chat=chat):
-                if attachment.file:
-                    attachment.file.delete(save=False)
-
-            chat.delete()
-
-    return build_chat_response(current_user)
-
-
-
-
-
 
 
 
