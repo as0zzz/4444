@@ -305,24 +305,21 @@
 
         /* BUTTON */
         .cta-button {
-            background-color: #DE7358;
-            color: white;
+            background-color: var(--accent);
+            color: var(--text-light);
+            padding: 1rem 1.5rem;
             border: none;
-            padding: 20px 40px;
-            border-radius: 30px;
-            font-family: 'Inter', -apple-system, Helvetica, sans-serif;
-            font-size: 30px;
-            font-weight: 900;
+            border-radius: 0.5rem;
+            font-size: 28px;
+            font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 30px;
-            width: 100%;
-            max-width: 500px;
+            transition: background-color 0.2s;
+            position: relative;
             text-decoration: none;
         }
 
         .cta-button:hover {
-            background-color: #C95F46;
+            background-color: #C4644A;
         }
 
         /* FOOTER */
@@ -354,12 +351,6 @@
                 gap: 20px;
             }
 
-            .cta-button {
-                padding: 15px 30px;
-                width: 100%;
-                max-width: 100%;
-            }
-
             .description-section {
                 gap: 15px;
             }
@@ -375,11 +366,6 @@
             main {
                 padding: 15px 12px;
             }
-
-            .cta-button {
-                padding: 12px 20px;
-                font-size: 18px;
-            }
         }
 
         @media (min-width: 769px) {
@@ -390,10 +376,6 @@
                 gap: 50px;
             }
 
-            .cta-button {
-                width: auto;
-                margin-top: 50px;
-            }
 
 
             .right-section {
@@ -457,7 +439,11 @@
             <!-- HERO SECTION -->
             <div class="hero-section">
                 {% csrf_token %}
-                <img src="{% static 'images/4.png' %}" alt="Городские небоскрёбы" class="hero-image">
+                {% if event.image %}
+                    <img src="{{ event.image.url }}" class="hero-image" alt="{{ event.event_name }}">
+                {% else %}
+                    <img src="{% static 'images/4.png' %}" class="hero-image" alt="{{ event.event_name }}">
+                {% endif %}
                 <div class="hero-overlay">
                     <h2 class="hero-text">Основная (краткая) информация по мероприятию</h2>
                 </div>
@@ -467,7 +453,12 @@
             <div class="content-wrapper">
                 {% csrf_token %}
                 <div class="right-section">
-                    <a href="{% url 'form_3' event.id %}" class="cta-button">Редактировать заявку</a>
+                    <a href="{% url 'form_3' event.id %}" class="cta-button"><b>Редактировать мероприятие</b></a>
+                    <a href="{% url 'delete_event' event.id %}" class="cta-button"
+                        onclick="return confirm('Вы уверены, что хотите удалить это мероприятие?')"
+                        style="background: Crimson;">
+                       <b>Удалить мероприятие</b>
+                    </a>
                 </div>
 
                 <div class="form-control">
