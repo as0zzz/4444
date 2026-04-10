@@ -155,14 +155,15 @@ class Event(models.Model):
     fio = models.CharField(max_length=200, verbose_name='ФИО')
     field_of_work = models.CharField(max_length=100, verbose_name='Сфера деятельности')
     organization_of_work = models.CharField(max_length=200, verbose_name='Организация')
-    event_description = models.TextField(verbose_name='Описание мероприятия')
 
     # Для карточки на главной
-    image = models.CharField(max_length=255, default='images/4.png', verbose_name='Фото')
+    image = models.ImageField(upload_to='images/4.png', blank=True, null=True, verbose_name='Фото')
 
     language = models.CharField(max_length=20, default='russian', verbose_name='Язык')
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    event_description = models.TextField(verbose_name='Описание мероприятия')
 
     def __str__(self):
         return self.event_name
