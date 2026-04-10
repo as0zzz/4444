@@ -498,7 +498,7 @@
         <main>
             <h1>Создание мероприятия</h1>
 
-            <form id="eventForm" method="post">
+            <form id="eventForm" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {{ form.as_p }}
                 <!-- Contact Parameters Section -->
@@ -582,6 +582,13 @@
                         ></textarea>
                     </div>
 
+                    <input type="file" name="event_image" accept="image/*" onchange="previewImage(event)">
+
+                    <div id="imagePreview" style="margin-top: 10px; display: none;">
+                        <img id="previewImg" style="max-width: 150px; max-height: 150px; border-radius: 8px;">
+                        <p style="font-size: 12px; color: #666;">Новое фото</p>
+                    </div>
+
                     <div class="submit-container">
                         <button type="submit" class="submit-button">Создать</button>
                     </div>
@@ -648,6 +655,27 @@
                 });
             }
         });
+
+
+
+
+
+        function previewImage(event) {
+        const previewDiv = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const file = event.target.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewDiv.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            previewDiv.style.display = 'none';
+        }
+    }
     </script>
 </body>
 </html>
