@@ -498,7 +498,7 @@
         <main>
             <h1>Редактирование мероприятия</h1>
 
-            <form id="eventForm" method="post">
+            <form id="eventForm" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {{ form.as_p }}
                 <!-- Contact Parameters Section -->
@@ -585,6 +585,27 @@
                         >{{ event.event_description }}</textarea>
                     </div>
 
+                    <div class="event-details-group">
+                        <label class="form-label">Фото мероприятия</label>
+
+                        <!-- Текущее фото (маленькое) -->
+                        {% if event.image %}
+                            <div style="margin-bottom: 10px;">
+                                <img src="{{ event.image.url }}" alt="Текущее фото" style="max-width: 150px; max-height: 150px; border-radius: 8px;">
+                                <p style="font-size: 12px; color: #666;">Текущее фото</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Кнопка выбора файла -->
+                        <input type="file" name="event_image" accept="image/*" onchange="previewImage(event)">
+
+                        <!-- Миниатюра выбранного фото (показывается сразу после выбора) -->
+                        <div id="imagePreview" style="margin-top: 10px; display: none;">
+                            <img id="previewImg" style="max-width: 150px; max-height: 150px; border-radius: 8px;">
+                            <p style="font-size: 12px; color: #666;">Новое фото (будет заменено)</p>
+                        </div>
+                    </div>
+
                     <div class="submit-container">
                         <button type="submit" class="submit-button">Редактировать</button>
                     </div>
@@ -651,6 +672,37 @@
                 });
             }
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        function previewImage(event) {
+        const previewDiv = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const file = event.target.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewDiv.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            previewDiv.style.display = 'none';
+        }
+    }
     </script>
 </body>
 </html>
