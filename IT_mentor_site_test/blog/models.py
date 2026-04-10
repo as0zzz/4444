@@ -1,8 +1,13 @@
+from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 import os
 import uuid
 
 from django.db import models
 from django.utils import timezone
+
 
 
 class Open1(models.Model):
@@ -23,6 +28,13 @@ class Open3(models.Model):
 
     class Meta:
         db_table = 'open_3'
+
+
+
+
+
+
+
 
 
 def chat_attachment_upload_to(instance, filename):
@@ -82,11 +94,6 @@ class ChatMessage(models.Model):
     text = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
-    is_edited = models.BooleanField(default=False)
-    edited_at = models.DateTimeField(null=True, blank=True)
-    is_deleted = models.BooleanField(default=False)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-
     class Meta:
         db_table = "chat_message"
         ordering = ["created_at", "id"]
@@ -103,3 +110,62 @@ class ChatAttachment(models.Model):
     class Meta:
         db_table = "chat_attachment"
         ordering = ["id"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class UserData(models.Model):
+    user = models.OneToOneField(Open3, on_delete=models.CASCADE, related_name='extra_data')
+
+    event_phone = models.CharField(max_length=12)
+    fio = models.CharField(max_length=100)
+    event_email = models.EmailField(unique=True)
+    event_name = models.TextField(blank=True, verbose_name='Название мероприятия')
+    field_of_work = models.TextField(blank=True, verbose_name='Область работы')
+    organization_of_work = models.TextField(blank=True, verbose_name='Организация работы')
+    event_description = models.TextField(blank=True, verbose_name='Описание мероприятия')
+
+    def __str__(self):
+        return f"Данные пользователя {self.user.name}"
+
+    class Meta:
+        db_table = 'user_data'
+
+
+
+
+class Event(models.Model):
+    user = models.ForeignKey(Open3, on_delete=models.CASCADE, related_name='events')
+
+    # Данные из формы
+    event_name = models.CharField(max_length=200, verbose_name='Название мероприятия')
+    event_phone = models.CharField(max_length=20, blank=True, verbose_name='Телефон')
+    event_email = models.EmailField(blank=True, verbose_name='Email')
+    fio = models.CharField(max_length=200, verbose_name='ФИО')
+    field_of_work = models.CharField(max_length=100, verbose_name='Сфера деятельности')
+    organization_of_work = models.CharField(max_length=200, verbose_name='Организация')
+    event_description = models.TextField(verbose_name='Описание мероприятия')
+
+    # Для карточки на главной
+    image = models.CharField(max_length=255, default='images/4.png', verbose_name='Фото')
+
+    language = models.CharField(max_length=20, default='russian', verbose_name='Язык')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.event_name
+
+    class Meta:
+        db_table = 'events'
