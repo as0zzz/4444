@@ -536,7 +536,7 @@ def home(request):
     for event in events:
         events_list.append({
             'id': event.id,
-            'image': static(event.image) if event.image else static('images/4.png'),
+            'image': event.image.url if event.image else '/static/images/4.png',
             'title': event.event_name,
             'filters': {
                 'direction': 'events',
@@ -605,6 +605,8 @@ def form_2(request):
         field_of_work = request.POST.get('field_of_work')
         organization_of_work = request.POST.get('organization_of_work')
         event_description = request.POST.get('event_description')
+        event_image = request.FILES.get('event_image')
+
 
         # Сохраняем в БД
         event = Event.objects.create(
@@ -617,7 +619,7 @@ def form_2(request):
             organization_of_work=organization_of_work,
             event_description=event_description,
             language='russian',  # или можно передать из формы
-            image='images/4.png'
+            image=event_image if event_image else None
         )
 
         return redirect('home')  # или другую страницу
@@ -644,6 +646,8 @@ def form_3(request, event_id):
         event.field_of_work = request.POST.get('field_of_work')
         event.organization_of_work = request.POST.get('organization_of_work')
         event.event_description = request.POST.get('event_description')
+        if request.FILES.get('event_image'):
+            event.image = request.FILES['event_image']
         event.save()
         return redirect('form_1', event_id=event.id)  # ← возврат на просмотр
 
@@ -703,6 +707,20 @@ def create_event(request):
 
     return render(request, 'blog/Форма_2.html', {'form': form})
 
+
+
+def delete_event(request, event_id):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('open_1')
+
+    try:
+        event = Event.objects.get(id=event_id, user_id=user_id)
+        event.delete()
+    except Event.DoesNotExist:
+        pass
+
+    return redirect('home')
 
 
 
