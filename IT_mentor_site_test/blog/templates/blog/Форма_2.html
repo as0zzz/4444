@@ -138,28 +138,20 @@
             background-color: #C4644A;
         }
 
-        
-
         .notification-badge {
             position: absolute;
             top: -0.5rem;
             right: -0.5rem;
-            min-width: 1.25rem;
+            width: 1.25rem;
             height: 1.25rem;
-            padding: 0 0.3rem;
             background-color: #FF0000;
-            border-radius: 999px;
-            display: inline-flex;
+            border-radius: 50%;
+            display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            line-height: 1;
-        }
-
-        .notification-badge[hidden] {
-            display: none !important;
         }
 
         .mobile-search {
@@ -479,16 +471,18 @@
                 </div>
 
                 <div class="header-buttons">
-                <a href="/profile/" class="btn-header">Профиль</a>
-                <form action="/logout/" method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-header">Выйти</button>
-                </form>
-                <a href="/chat/" class="btn-header" style="position: relative;">
-                    Чат
-                    <span class="notification-badge" id="chatHeaderBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>
-                </a>
-            </div>
+                    <form action="/profile/">
+                        <button class="btn-header">Профиль</button>
+                    </form>
+                    <form action="/logout/" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-header">Выйти</button>
+                    </form>
+                    <a href="/chat/" class="btn-header" style="position: relative;">
+                        Чат
+                    <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
+                    </a>
+                </div>
             </div>
 
             <div class="mobile-search">
@@ -504,10 +498,12 @@
         <main>
             <h1>Создание мероприятия</h1>
 
-            <form id="eventForm" onsubmit="handleSubmit(event)">
+            <form id="eventForm" method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
                 <!-- Contact Parameters Section -->
                 <div class="form-section">
-                    <div class="section-title">Параметры заявки</div>
+                    <div class="section-title">Параметры мероприятия</div>
                     
                     <div class="contact-grid">
                         <div class="form-group">
@@ -515,7 +511,7 @@
                             <input 
                                 type="text" 
                                 class="form-input centered"
-                                name="phone"
+                                name="event_phone"
                                 value="+7 ... ... .. .."
                                 placeholder="Введите телефон"
                             >
@@ -526,7 +522,7 @@
                             <input 
                                 type="text" 
                                 class="form-input centered" 
-                                name="fullName"
+                                name="fio"
                                 value="Иванов Иван Иванович"
                                 placeholder="Введите ФИО"
                             >
@@ -537,7 +533,7 @@
                             <input 
                                 type="email" 
                                 class="form-input centered"
-                                name="email"
+                                name="event_email"
                                 value="......."
                                 placeholder="Введите почту"
                             >
@@ -552,7 +548,7 @@
                         <input 
                             type="text" 
                             class="form-input" 
-                            name="eventName"
+                            name="event_name"
                             placeholder="Введите название мероприятия"
                         >
                     </div>
@@ -562,7 +558,7 @@
                         <input 
                             type="text" 
                             class="form-input" 
-                            name="workArea"
+                            name="field_of_work"
                             placeholder="Введите область работы"
                         >
                     </div>
@@ -572,7 +568,7 @@
                         <input 
                             type="text" 
                             class="form-input" 
-                            name="organization"
+                            name="organization_of_work"
                             placeholder="Введите организацию работы"
                         >
                     </div>
@@ -581,7 +577,7 @@
                         <label class="form-label">Описание мероприятия</label>
                         <textarea 
                             class="form-textarea" 
-                            name="description"
+                            name="event_description"
                             placeholder="Введите описание мероприятия"
                         ></textarea>
                     </div>
@@ -600,10 +596,6 @@
     </div>
 
     <script>
-        const chatHeaderBadge = document.getElementById("chatHeaderBadge");
-        function updateUnreadBadges() {
-            setBadgeValue(chatHeaderBadge, getTotalUnreadCount());
-        }
         function handleSubmit(event) {
             event.preventDefault();
             const formData = new FormData(document.getElementById('eventForm'));
