@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Название мероприятия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #DE7358;
+            --bg-light: #F3F4F6;
+            --bg-gray: #E5E7EB;
+            --text-dark: #000000;
+            --text-light: #FFFFFF;
+            --border-color: #D1D5DB;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, Roboto, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* HEADER */
+        header {
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-container {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .header-container {
+                padding: 1.5rem 2rem;
+                gap: 1.5rem;
+            }
+        }
+
+        .logo {
+            font-family: 'Nova Script', cursive;
+            color: var(--accent);
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo:hover {
+            opacity: 0.8;
+        }
+
+        @media (min-width: 768px) {
+            .logo {
+                font-size: 2.75rem;
+            }
+        }
+
+        .search-container {
+            display: none;
+            flex: 1;
+            max-width: 30rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .search-container {
+                display: flex;
+            }
+        }
+
+        .search-container input {
+            flex: 1;
+            font-family: 'Inter', -apple-system, Helvetica, sans-serif;
+            font-size: 1.25rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            outline: none;
+            color: var(--text-dark);
+        }
+
+        .search-container input::placeholder {
+            color: var(--text-dark);
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .header-buttons {
+                gap: 0.75rem;
+            }
+        }
+
+        .btn-header {
+            background-color: var(--accent);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+            text-decoration: none;
+        }
+
+        @media (min-width: 768px) {
+            .btn-header {
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+
+        .btn-header:hover {
+            background-color: #C4644A;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -0.5rem;
+            right: -0.5rem;
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: #FF0000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .mobile-search {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .mobile-search {
+                display: none;
+            }
+        }
+
+        .mobile-search input {
+            flex: 1;
+            font-family: 'Nova Script', cursive;
+            font-size: 1.125rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            outline: none;
+            color: var(--text-dark);
+        }
+
+        .header-divider {
+            display: none;
+        }
+
+        .header-dot {
+            display: none;
+        }
+
+        /* MAIN CONTENT */
+        main {
+            flex: 1;
+            padding: 30px 20px;
+        }
+
+        h1 {
+            font-size: clamp(32px, 8vw, 64px);
+            font-weight: 600;
+            text-align: center;
+            margin: 30px 0;
+            line-height: 1.3;
+        }
+
+        /* HERO IMAGE SECTION */
+        .hero-section {
+            position: relative;
+            width: 100%;
+            margin: 30px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-text {
+            color: white;
+            font-size: clamp(20px, 5vw, 40px);
+            font-weight: 600;
+            text-align: center;
+            padding: 20px;
+            line-height: 1.3;
+            max-width: 500px;
+        }
+
+        /* CONTENT SECTION */
+        .content-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .left-section {
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 500;
+            margin: 20px 0;
+            color: #000000;
+        }
+
+        .section-subtitle {
+            font-size: 32px;
+            font-weight: 600;
+            margin: 20px 0;
+            color: #000000;
+        }
+
+        .description-section {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin: 30px 0;
+        }
+
+        .arrow-svg {
+            width: 20px;
+            height: auto;
+            flex-shrink: 0;
+            margin-top: 10px;
+        }
+
+        .description-text {
+            font-size: 24px;
+            color: #000000;
+        }
+
+        /* BUTTON */
+        .cta-button {
+            background-color: #DE7358;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-family: 'Inter', -apple-system, Helvetica, sans-serif;
+            font-size: 30px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .cta-button:hover {
+            background-color: #C95F46;
+        }
+
+        /* FOOTER */
+        footer {
+            background-color: #f5f5f5;
+            padding: 30px 20px;
+            text-align: center;
+            color: #000000;
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 400;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+
+            main {
+                padding: 20px 15px;
+            }
+
+            h1 {
+                margin: 20px 0;
+            }
+
+            .hero-section {
+                margin: 20px 0;
+            }
+
+            .content-wrapper {
+                gap: 20px;
+            }
+
+            .cta-button {
+                padding: 15px 30px;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .description-section {
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            h1 {
+                font-size: 24px;
+                margin: 15px 0;
+            }
+
+            main {
+                padding: 15px 12px;
+            }
+
+            .cta-button {
+                padding: 12px 20px;
+                font-size: 18px;
+            }
+        }
+
+        @media (min-width: 769px) {
+
+            .content-wrapper {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 50px;
+            }
+
+            .cta-button {
+                width: auto;
+                margin-top: 50px;
+            }
+
+            .left-section {
+                flex: 1;
+            }
+
+            .right-section {
+                flex-shrink: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <div class="header-container">
+                <a href="/home/" class="logo">Logo</a>
+
+                <div class="search-container">
+                    <input type="text" placeholder="Поиск..." id="searchDesktop">
+                </div>
+
+                <div class="header-buttons">
+                    <a href="/profile/" class="btn-header">Профиль</a>
+                    <form action="/logout/" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-header">Выйти</button>
+                    </form>
+                    <button class="btn-header" style="position: relative;">
+                        Чат
+                        <span class="notification-badge">!</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mobile-search">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" placeholder="Поиск..." id="searchMobile">
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main>
+            <h1>Название мероприятия</h1>
+
+            <!-- HERO SECTION -->
+            <div class="hero-section">
+                <img src="{% static 'images/4.png' %}" alt="Городские небоскрёбы" class="hero-image">
+                <div class="hero-overlay">
+                    <h2 class="hero-text">Основная информация по мероприятию</h2>
+                </div>
+            </div>
+
+            <!-- CONTENT SECTION -->
+            <div class="content-wrapper">
+                <div class="left-section">
+                    <h3 class="section-title">Ментор по практике</h3>
+                    <h4 class="section-subtitle">Область работы: UI/UX дизайнер</h4>
+                    <h5 class="section-subtitle">Описание практики:</h5>
+
+                    <div class="description-section">
+                        <svg class="arrow-svg" viewBox="0 0 15 151" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.65691 150.707C7.04743 151.098 7.6806 151.098 8.07112 150.707L14.4351 144.343C14.8256 143.953 14.8256 143.319 14.4351 142.929C14.0446 142.538 13.4114 142.538 13.0209 142.929L7.36401 148.586L1.70716 142.929C1.31664 142.538 0.68347 142.538 0.292946 142.929C-0.0975784 143.319 -0.0975784 143.953 0.292946 144.343L6.65691 150.707ZM7.36401 0L6.36401 0L6.36401 150H7.36401H8.36401L8.36401 0L7.36401 0Z" fill="black"/>
+                        </svg>
+                        <p class="description-text">И так далее</p>
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    {% if role == 'mentor' %}
+                        <button class="cta-button" onclick="navigateTo('application')">Редактировать заявку</button>
+                    {% else %}
+                        <button class="cta-button" onclick="return false;">Подать заявку</button>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer>
+            Контактная информация
+        </footer>
+    </div>
+
+    <script>
+        function navigateTo(page) {
+            const pages = {
+                'home': '/',
+                'language': '/language',
+                'profile': '/profile',
+                'chat': '/chat',
+                'application': '/form_2'
+            };
+            window.location.href = pages[page] || '/';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const profileButton = document.querySelector('.btn-header');
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    navigateTo('profile');
+                });
+            }
+        });
+
+        // Поиск
+        document.querySelector('.search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                console.log('Search query:', this.value);
+                alert('Поиск: ' + this.value);
+            }
+        });
+    </script>
+</body>
+</html>

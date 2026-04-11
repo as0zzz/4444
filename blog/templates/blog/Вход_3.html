@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Регистрация</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100%;
+      background: url("{% static 'images/2.jpg' %}?v={{ STATIC_VERSION }}");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 750px;
+    }
+
+    .title {
+      font-family: 'Inter', -apple-system, Helvetica, sans-serif;
+      font-size: 50px;
+      font-weight: 400;
+      text-align: center;
+      color: black;
+      margin-bottom: clamp(1.5rem, 5vw, 2.5rem);
+    }
+
+    .form-box {
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px solid #000;
+      border-radius: 24px;
+      padding: 48px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1.5rem, 3vw, 1.75rem);
+    }
+
+    .form-group {
+      display: flex;
+      align-items: center;
+      gap: clamp(1rem, 3vw, 1.5rem);
+    }
+
+    label {
+      font-size: 28px;
+      font-weight: 400;
+      color: #000;
+      min-width: 210px;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    input[type="password"] {
+      flex: 1;
+      height: 56px;
+      background-color: #ccc;
+      border: none;
+      border-radius: 2rem;
+      padding: 16px 24px;
+      font-size: 18px;
+      font-family: inherit;
+      transition: outline 0.2s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="tel"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      outline: 2px solid #000;
+      outline-offset: 2px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: clamp(1rem, 3vw, 1.5rem);
+      padding-top: clamp(1rem, 2vw, 1.5rem);
+    }
+
+    input[type="checkbox"] {
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 2px solid #000;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: #000;
+    }
+
+    .checkbox-group label {
+      font-size: 16px;
+      min-width: unset;
+      cursor: pointer;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+      padding-top: clamp(2rem, 4vw, 2.5rem);
+    }
+
+    button {
+      padding: clamp(0.75rem, 1.5vw, 1rem) clamp(2rem, 4vw, 3rem);
+      border: 1px solid #000;
+      border-radius: 50px;
+      font-size: 30px;
+      font-weight: 400;
+      color: #000;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    button:hover {
+      background-color: #000;
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      .form-group {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      label {
+        min-width: unset;
+      }
+
+      input[type="text"],
+      input[type="tel"],
+      input[type="email"],
+      input[type="password"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Регистрация</h1>
+    
+    <div class="form-box">
+      <form method="POST">
+        {% csrf_token %}
+        {% if error %}
+            <div style="color: red; text-align: center; margin-bottom: 1rem;">{{ error }}</div>
+        {% endif %}
+        <div class="form-group">
+          <label for="name">Имя</label>
+          <input type="text" id="name" name="name" placeholder="" required>
+        </div>
+
+        <div class="form-group">
+          <label for="patronymic">Отчество</label>
+          <input type="text" id="patronymic" name="patronymic" placeholder="">
+        </div>
+
+        <div class="form-group">
+          <label for="surname">Фамилия</label>
+          <input type="text" id="surname" name="surname" placeholder="" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Телефон</label>
+          <input type="tel" id="phone" name="phone" pattern="\+7\s?[\(]{0,1}\d{3}[\)]{0,1}\s?\d{3}[-]{0,1}\d{2}[-]{0,1}\d{2}" placeholder="+7 (XXX) XXX-XX-XX" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Эл. почта</label>
+          <input type="email" id="email" name="email" placeholder="" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" name="pa" placeholder="" required>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm">Подтверждение<br>пароля</label>
+          <input type="password" id="confirm" name="confirm" placeholder="" required>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="agree" name="agree">
+          <label for="agree">Я даю согласие на обработку персональных данных и принимаю условия<br>политики конфиденциальности</label>
+        </div>
+
+        <div class="button-container">
+          <button type="submit">ОК</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    //Новогодний снег
+       setTimeout(function(){
+          var s=document.createElement('div');
+          s.id='snow';
+          s.style='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:hidden;';
+          document.body.appendChild(s);
+
+          var style=document.createElement('style');
+          style.textContent='#snow .f{position:absolute;background:white;border-radius:50%;top:-10px;animation:fall linear infinite}@keyframes fall{0%{opacity:0;transform:translateY(0)}10%{opacity:0.7}90%{opacity:0.6}100%{opacity:0;transform:translateY(calc(100vh + 20px)) translateX(var(--x))}}';
+          document.head.appendChild(style);
+
+          for(var i=0;i<80;i++){
+            var f=document.createElement('div');
+            f.className='f';
+            f.style.cssText='width:'+(2+Math.random()*5)+'px;height:'+(2+Math.random()*5)+'px;left:'+Math.random()*100+'vw;--x:'+(Math.random()*80-40)+'px;animation-duration:'+(10+Math.random()*15)+'s;animation-delay:'+(Math.random()*10)+'s;opacity:'+(0.4+Math.random()*0.5)+';';
+            s.appendChild(f);
+          }
+        }, 500);
+  </script>
+</body>
+</html>
