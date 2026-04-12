@@ -412,10 +412,6 @@
 
                 <div class="header-buttons">
                     <a href="/profile/" class="btn-header">Профиль</a>
-                    <form action="/logout/" method="post">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-header">Выйти</button>
-                    </form>
                     <a href="/chat/" class="btn-header" style="position: relative;">
                         Чат
                     <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
