@@ -1,5 +1,4 @@
 from django.urls import path
-from .views import *
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -9,6 +8,8 @@ urlpatterns = [
     path('open_1/', views.open_1, name='open_1'),
     path('logout/', views.logout_view, name='logout'),  # Выход
 
+    path('rating/', views.submit_review, name='review'),
+    path('test-review/', views.test_review_page, name='test_review_page'),
 
     path('open_2/', views.open_2, name='open_2'),
     path('open_3/', views.open_3, name='open_3'),

@@ -33,7 +33,52 @@ from .models import (
 )
 from django.contrib import messages
 
+from .models import Open1, Open3, Review
+from django.db.models import Avg
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
+
+@require_POST
+def submit_review(request):
+
+    # 1. Проверяем, авторизован ли пользователь
+    reviewer_email = request.session.get('user_email')
+    if not reviewer_email:
+        return JsonResponse({'status': 'error', 'message': 'Вы не авторизованы'}, status=401)
+    
+    try:
+        # Читаем данные, которые прислал JavaScript
+        data = json.loads(request.body)
+        score = data.get('score')
+        comment = data.get('comment')
+        target_email = data.get('target_email') # Кого мы оцениваем
+        
+        # 2. Базовая защита (валидация)
+        if not target_email:
+            return JsonResponse({'status': 'error', 'message': 'Не указан пользователь для оценки'}, status=400)
+            
+        if not score or not isinstance(score, int) or not (1 <= score <= 10):
+            return JsonResponse({'status': 'error', 'message': 'Оценка должна быть числом от 1 до 10'}, status=400)
+
+        # 3. Сохраняем отзыв в базу данных
+        Review.objects.create(
+            reviewer_email=reviewer_email,
+            target_email=target_email,
+            score=score,
+            comment=comment
+        )
+
+        print(f"✅ Успешно сохранена оценка {score} для {target_email}")
+
+        # (В будущем здесь мы добавим код для пересчета среднего рейтинга target_email)
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        print(f"❌ Ошибка при сохранении отзыва: {e}")
+        return JsonResponse({'status': 'error', 'message': 'Внутренняя ошибка сервера'}, status=500)
+    
 
 def open_1(request):
     print("ФУНКЦИЯ open_1 ВЫЗВАНА")
@@ -58,6 +103,7 @@ def open_1(request):
                 user = Open1.objects.get(email=email, pa=password)
 
                 request.session['user_id'] = user.id
+                request.session['user_email'] = user.email
                 request.session['is_authenticated'] = True
 
                 print(f"✅ Успешный вход! ID: {user.id}")
@@ -507,31 +553,20 @@ def add_attachments_to_message(message, uploaded_files):
 
 @login_required
 def index(request):
-    user = Open1.objects.get(id=request.session['user_id'])
+    user = Open1.objects.get(email=request.session['user_email'])
     return render(request, 'blog/index.html', {'user': user})
-
 
 def open_2(request):
     user = request.session.get('user', {})
     return render(request, 'blog/Вход_2.html', {'user': user})
 
-
 @login_required
 def home(request):
-    print("=== СОДЕРЖИМОЕ СЕССИИ ===")
-    print("Все ключи:", request.session.keys())
-    print("user_id:", request.session.get('user_id'))
-    print("user_type:", request.session.get('user_type'))
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('open_1')
+    # 1. Фикс по email
+    user = Open1.objects.get(email=request.session['user_email'])
 
-    user = Open3.objects.get(id=user_id)
-    events = Event.objects.all()  # все мероприятия пользователя
-
-    print("Количество мероприятий:", events.count())
-
-    # Преобразуем в список словарей для JSON
+    # 2. Ранний код
+    events = Event.objects.all() # все мероприятия
     events_list = []
     for event in events:
         events_list.append({
@@ -546,19 +581,39 @@ def home(request):
             }
         })
 
-    print("events_list:", events_list)
+    # 3. Мой код с рейтингом
+    all_specialists = Open3.objects.all()
+    specialists_data = []
+    
+    for spec in all_specialists:
+        avg_rating = Review.objects.filter(target_email=spec.email).aggregate(Avg('score'))['score__avg']
+        display_rating = round(avg_rating, 1) if avg_rating is not None else 0.0
+        
+        specialists_data.append({
+            'name': spec.name,
+            'surname': spec.surname,
+            'initial': spec.name[0] if spec.name else '?',
+            'rating': display_rating,
+            'email': spec.email
+        })
+    
+    top_specialists = sorted(specialists_data, key=lambda x: x['rating'], reverse=True)[:8]
 
+    # 4. ОБЩИЙ РЕНДЕР (склеили его events_json и наши top_specialists)
     return render(request, 'blog/Главная страница.html', {
         'user': user,
-        'events_json': events_list,  # передаём JSON
+        'events_json': events_list,
+        'top_specialists': top_specialists
     })
 
 @login_required
 def profile(request):
     """Защищенная страница — только для авторизованных"""
-    user = Open3.objects.get(id=request.session['user_id'])
-    return render(request, 'blog/ЛК.html', {'user': user})
-
+    try:
+        user = Open3.objects.get(email=request.session['user_email'])
+        return render(request, 'blog/ЛК.html', {'user': user})
+    except Open3.DoesNotExist:
+        return redirect('home')
 
 @login_required
 def chat_page(request):
@@ -652,11 +707,45 @@ def form_3(request, event_id):
         return redirect('form_1', event_id=event.id)  # ← возврат на просмотр
 
     return render(request, 'blog/Форма_3.html', {'event': event})
+def form_1(request):
+    user = Open1.objects.get(email=request.session['user_email'])
+    return render(request, 'blog/Форма_1.html', {'user': user})
+
+@login_required
+def form_2(request):
+    user = Open1.objects.get(email=request.session['user_email'])
+    return render(request, 'blog/Форма_2.html', {'user': user})
 
 @login_required
 def profile_test(request):
-    user = Open1.objects.get(id=request.session['user_id'])
-    return render(request, 'blog/ЛК_тест.html', {'user': user})
+    # 1. Проверяем, есть ли email в URL (например: ?email=test_mentor@mail.com)
+    target_email = request.GET.get('email')
+    
+    # 2. Получаем текущего авторизованного пользователя (для шапки сайта)
+    current_user = Open1.objects.get(email=request.session['user_email'])
+
+    if target_email:
+        # Если кликнули из рейтинга — ищем данные этого специалиста
+        try:
+            # Ищем в Open3, так как там лежат Имя, Фамилия, Телефон и т.д.
+            profile_data = Open3.objects.get(email=target_email)
+        except Open3.DoesNotExist:
+            # Если кто-то ввел кривую ссылку, просто возвращаем на главную
+            return redirect('home')
+    else:
+        # Если просто нажали кнопку "Профиль" в шапке сайта — показываем свои данные
+        try:
+            profile_data = Open3.objects.get(email=request.session['user_email'])
+        except Open3.DoesNotExist:
+            # Если профиль в Open3 еще не заполнен
+            profile_data = current_user
+
+    # Передаем profile_data под ключом 'user', чтобы твой HTML шаблон (ЛК_тест.html) 
+    # ничего не заметил и продолжал выводить {{ user.name }}, {{ user.surname }} и т.д.
+    return render(request, 'blog/ЛК.html', {
+        'user': profile_data,
+        'current_user': current_user
+    })
 
 
 @login_required
@@ -913,3 +1002,13 @@ def chat_delete_api(request):
 def logout_view(request):
     request.session.flush()
     return redirect('open_1')
+
+
+@login_required
+def test_review_page(request):
+    # Для теста захардкодим email того, кого мы будем оценивать. 
+    # Так как ты в базе один, давай оценим выдуманного ментора (или можешь вписать свой chuvakov015@mail.com)
+    context = {
+        'target_user_email': 'test_mentor@mail.com' 
+    }
+    return render(request, 'blog/Оценка.html', context)

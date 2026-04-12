@@ -784,62 +784,17 @@
         <div class="hero-overlay">
             <h2 class="hero-title">Рейтинг топ специалистов</h2>
             <div class="specialists-grid">
-                <a href="" class="specialist-card">
+                {% for spec in top_specialists %}
+                <a href="/profile_test/?email={{ spec.email }}" class="specialist-card">
                     <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.8</div>
+                        <div class="specialist-circle">{{ spec.initial }}</div>
+                        <div class="specialist-rating">{{ spec.rating }}</div>
                     </div>
-                    <p class="specialist-label">Контактная информация</p>
+                    <p class="specialist-label">{{ spec.surname }} {{ spec.name }}</p>
                 </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.7</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.7</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.6</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.5</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.4</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.3</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
-                <a href="" class="specialist-card">
-                    <div class="specialist-avatar">
-                        <div class="specialist-circle">И</div>
-                        <div class="specialist-rating">9.2</div>
-                    </div>
-                    <p class="specialist-label">Контактная информация</p>
-                </a>
+                {% empty %}
+                <p style="color: white; grid-column: 1/-1;">Специалистов пока нет</p>
+                {% endfor %}
             </div>
         </div>
     </div>

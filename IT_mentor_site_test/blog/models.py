@@ -170,3 +170,21 @@ class Event(models.Model):
 
     class Meta:
         db_table = 'events'
+class Review(models.Model):
+    # Email того, кто оставляет отзыв (берем из сессии)
+    reviewer_email = models.EmailField(verbose_name='Email оценивающего')
+    
+    # Email того, кого оценивают (ментора или стажера)
+    target_email = models.EmailField(verbose_name='Email оцениваемого')
+    
+    # Сама оценка от 1 до 10
+    score = models.IntegerField(verbose_name='Оценка')
+    
+    # Текст отзыва (может быть пустым, поэтому blank=True, null=True)
+    comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
+    
+    # Дата выставления оценки (заполнится сама автоматически)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата оценки')
+
+    def __str__(self):
+        return f"Оценка {self.score} от {self.reviewer_email} для {self.target_email}"
