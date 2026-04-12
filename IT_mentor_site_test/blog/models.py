@@ -93,6 +93,10 @@ class ChatMessage(models.Model):
     message_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_USER)
     text = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
 
     class Meta:
         db_table = "chat_message"
