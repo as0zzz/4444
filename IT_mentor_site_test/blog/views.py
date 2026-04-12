@@ -458,7 +458,7 @@ def is_message_read_for_current_user(message, current_user, participants):
     if not current_participant.last_read_at:
         return False
 
-return current_participant.last_read_at >= message.created_at
+    return current_participant.last_read_at >= message.created_at
 
 def serialize_chat(participant, current_user, profile_map):
     chat = participant.chat
@@ -660,10 +660,10 @@ def chat_page(request):
 
 
 @login_required
-def form_1(request, event_id):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
+def form_1(request, event_id=None):
+    if event_id is None:
+        user = Open1.objects.get(email=request.session['user_email'])
+        return render(request, 'blog/Форма_1.html', {'user': user})
 
     try:
         event = Event.objects.get(id=event_id)
@@ -677,11 +677,7 @@ def form_2(request):
     print("=== FORM_2 ВЫЗВАН ===")
     print("Метод:", request.method)
     print("POST данные:", request.POST)
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
-
-    user = Open3.objects.get(id=user_id)
+    user = Open3.objects.get(email=request.session['user_email'])
 
     if request.method == 'POST':
         # Получаем данные из формы
@@ -739,14 +735,6 @@ def form_3(request, event_id):
         return redirect('form_1', event_id=event.id)  # ← возврат на просмотр
 
     return render(request, 'blog/Форма_3.html', {'event': event})
-def form_1(request):
-    user = Open1.objects.get(email=request.session['user_email'])
-    return render(request, 'blog/Форма_1.html', {'user': user})
-
-@login_required
-def form_2(request):
-    user = Open1.objects.get(email=request.session['user_email'])
-    return render(request, 'blog/Форма_2.html', {'user': user})
 
 @login_required
 def profile_test(request):
@@ -810,23 +798,7 @@ def view_profile(request):
 
 
 def create_event(request):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
-
-    user = Open3.objects.get(id=user_id)
-
-    if request.method == 'POST':
-        form = EventForm(request.POST)
-        if form.is_valid():
-            event = form.save(commit=False)
-            event.user = user
-            event.save()
-            return redirect('home')
-    else:
-        form = EventForm()
-
-    return render(request, 'blog/Форма_2.html', {'form': form})
+    return form_2(request)
 
 
 
@@ -1116,28 +1088,28 @@ def chat_delete_api(request):
     chat = participant.chat
 
     with transaction.atomic():
-    participant.is_hidden = True
-    participant.is_active = False
-    participant.is_pinned = False
-    participant.last_read_at = timezone.now()
-    participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
+        participant.is_hidden = True
+        participant.is_active = False
+        participant.is_pinned = False
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
 
-    has_active_participants = ChatParticipant.objects.filter(
-        chat=chat,
-        is_active=True,
-        is_hidden=False,
-    ).exists()
+        has_active_participants = ChatParticipant.objects.filter(
+            chat=chat,
+            is_active=True,
+            is_hidden=False,
+        ).exists()
 
-    if has_active_participants:
-        create_system_message(chat, f"{display_name} вышел из чата", sender=current_user)
-    else:
-        for attachment in ChatAttachment.objects.filter(message__chat=chat):
-            if attachment.file:
-                attachment.file.delete(save=False)
+        if has_active_participants:
+            create_system_message(chat, f"{display_name} вышел из чата", sender=current_user)
+        else:
+            for attachment in ChatAttachment.objects.filter(message__chat=chat):
+                if attachment.file:
+                    attachment.file.delete(save=False)
 
-        chat.delete()
+            chat.delete()
 
-return build_chat_response(current_user)
+    return build_chat_response(current_user)
 
 
 def logout_view(request):
