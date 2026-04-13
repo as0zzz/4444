@@ -161,6 +161,7 @@
     <div class="form-box">
       <form method="POST">
         {% csrf_token %}
+        <!-- Добавлена проверка на email-->
         {% if error %}
             <div style="color: red; text-align: center; margin-bottom: 1rem;">{{ error }}</div>
         {% endif %}
