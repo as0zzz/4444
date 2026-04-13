@@ -498,7 +498,7 @@ def get_current_users_user(request):
     user, _ = Users.objects.get_or_create(email=email, defaults={'role': role})
     return user
 
-# ---------- ЧАТ (исправлен для работы с Users) ----------
+
 
 @login_required
 def chat_page(request):
