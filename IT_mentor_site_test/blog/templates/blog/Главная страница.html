@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Студенческая платформа практик</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #DE7358;
+            --bg-light: #F3F4F6;
+            --bg-gray: #E5E7EB;
+            --text-dark: #000000;
+            --text-light: #FFFFFF;
+            --border-color: #D1D5DB;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, Roboto, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        header {
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-container {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .header-container {
+                padding: 1.5rem 2rem;
+                gap: 1.5rem;
+            }
+        }
+
+        .logo {
+            font-family: 'Nova Script', cursive;
+            color: var(--accent);
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo:hover {
+            opacity: 0.8;
+        }
+
+        @media (min-width: 768px) {
+            .logo {
+                font-size: 2.75rem;
+            }
+        }
+
+        .search-container {
+            display: none;
+            flex: 1;
+            max-width: 30rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .search-container {
+                display: flex;
+            }
+        }
+
+        .search-container input {
+            flex: 1;
+            font-family: 'Inter', -apple-system, Helvetica, sans-serif;
+            font-size: 1.25rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            outline: none;
+            color: var(--text-dark);
+        }
+
+        .search-container input::placeholder {
+            color: var(--text-dark);
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .header-buttons {
+                gap: 0.75rem;
+            }
+        }
+
+        .btn-header {
+            background-color: var(--accent);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+            text-decoration: none;
+        }
+
+        @media (min-width: 768px) {
+            .btn-header {
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+
+        .btn-header:hover {
+            background-color: #C4644A;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -0.5rem;
+            right: -0.5rem;
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: #FF0000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .mobile-search {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .mobile-search {
+                display: none;
+            }
+        }
+
+        .mobile-search input {
+            flex: 1;
+            font-family: 'Nova Script', cursive;
+            font-size: 1.125rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            outline: none;
+            color: var(--text-dark);
+        }
+
+        .header-divider {
+            display: none;
+        }
+
+        .header-dot {
+            display: none;
+        }
+
+        .hero {
+            position: relative;
+            height: 16rem;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .hero {
+                height: 18rem;
+            }
+        }
+
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-title {
+            color: white;
+            font-size: 1.875rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .hero-title {
+                font-size: 2.25rem;
+            }
+        }
+
+        .specialists-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            max-width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .specialists-grid {
+                grid-template-columns: repeat(8, 1fr);
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .specialists-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .specialist-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .specialist-card:hover {
+            opacity: 0.8;
+        }
+
+        .specialist-avatar {
+            position: relative;
+            width: 5rem;
+            height: 5rem;
+        }
+
+        @media (min-width: 768px) {
+            .specialist-avatar {
+                width: 5.5rem;
+                height: 5.5rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .specialist-avatar {
+                width: 6rem;
+                height: 6rem;
+            }
+        }
+
+        .specialist-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #D1D5DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #4B5563;
+            text-decoration: none;
+        }
+
+        @media (min-width: 768px) {
+            .specialist-circle {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .specialist-circle {
+                font-size: 1.875rem;
+            }
+        }
+
+        .specialist-rating {
+            position: absolute;
+            bottom: -0.5rem;
+            right: -0.5rem;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 900;
+        }
+
+        @media (min-width: 768px) {
+            .specialist-rating {
+                width: 2.75rem;
+                height: 2.75rem;
+                font-size: 1rem;
+            }
+        }
+
+        .specialist-label {
+            color: white;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.625rem;
+            max-width: 5rem;
+            line-height: 1.2;
+        }
+
+        @media (min-width: 768px) {
+            .specialist-label {
+                font-size: 0.75rem;
+                max-width: 5.5rem;
+            }
+        }
+
+        .content-wrapper {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 2rem 0rem;
+        }
+
+        @media (min-width: 768px) {
+            .content-wrapper {
+                padding: 2.5rem 0rem;
+            }
+        }
+
+        .filter-toggle {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            background-color: var(--accent);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .filter-toggle {
+                display: none;
+            }
+        }
+
+        .filter-toggle:hover {
+            background-color: #C4644A;
+        }
+
+        .content-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+        }
+
+        @media (min-width: 768px) {
+            .content-title {
+                font-size: 2.25rem;
+                text-align: left;
+                text-align: right;
+                display: block;
+                width: 78%;
+            }
+        }
+
+        .layout-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .layout-container {
+                flex-direction: row;
+            }
+        }
+
+        .sidebar {
+            width: 100%;
+            max-width: 20rem;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar {
+                width: 20rem;
+            }
+        }
+
+        .sidebar.hidden {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar.hidden {
+                display: block;
+            }
+        }
+
+        .filter-panel {
+            background-color: var(--bg-gray);
+            border-radius: 1.875rem;
+            padding: 1.5rem 2rem;
+            margin-top: 30px;
+        }
+
+        .filter-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .filter-title {
+                font-size: 1.875rem;
+                text-align: center;
+            }
+        }
+
+        .filter-section {
+            margin-bottom: 2rem;
+        }
+
+        .filter-section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .filter-option input[type="checkbox"] {
+            width: 1.75rem;
+            height: 1.75rem;
+            cursor: pointer;
+            accent-color: var(--accent);
+            border: 2px solid var(--text-dark);
+            border-radius: 0.25rem;
+        }
+
+        .filter-option label {
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        @media (min-width: 768px) {
+            .filter-option label {
+                font-size: 1.125rem;
+            }
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+            border-top: 2px solid #A0AEC0;
+            padding-top: 1.5rem;
+        }
+
+        .btn-apply {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        .btn-apply:hover {
+            background-color: #C4644A;
+        }
+
+        .btn-reset {
+            background-color: transparent;
+            color: var(--text-dark);
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-reset:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1.5rem 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .card:hover {
+            opacity: 0.8;
+        }
+
+        .card.hidden {
+            display: none;
+        }
+
+        .card-image-container {
+            position: relative;
+            height: 13rem;
+            overflow: hidden;
+            border-radius: 1.875rem;
+        }
+
+        @media (min-width: 768px) {
+            .card-image-container {
+                height: 14.5rem;
+            }
+        }
+
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-image.restricted {
+            opacity: 0.3;
+        }
+
+        .card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+        }
+
+        .card-restricted {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .card-restricted p {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .card-restricted p {
+                font-size: 1.875rem;
+            }
+        }
+
+        .card-photo-label {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        @media (min-width: 768px) {
+            .card-photo-label {
+                font-size: 1.25rem;
+            }
+        }
+
+        .card-title {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 1.125rem;
+            font-weight: 400;
+        }
+
+        @media (min-width: 768px) {
+            .card-title {
+                font-size: 1.25rem;
+            }
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 2rem;
+            color: #6B7280;
+            font-size: 1.125rem;
+        }
+
+        footer {
+            background-color: white;
+            margin-top: 3rem;
+            padding: 2rem 1rem;
+        }
+
+        @media (min-width: 768px) {
+            footer {
+                margin-top: 4rem;
+                padding: 2rem;
+            }
+        }
+
+        .footer-content {
+            max-width: 80rem;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 400;
+            color: #1F2937;
+        }
+
+        @media (min-width: 768px) {
+            .footer-content {
+                font-size: 1.25rem;
+            }
+        }
+
+        /* BUTTON */
+        .cta-button {
+            background-color: #DE7358;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-family: 'Inter', -apple-system, Roboto, sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-decoration: none;
+        }
+
+        .cta-button:hover {
+            background-color: #C95F46;
+        }
+
+        @media (max-width: 768px) {
+            .cta-button {
+                padding: 15px 30px;
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .cta-button {
+                width: auto;
+                margin-top: 50px;
+            }
+        }
+
+        .event-card {
+            display: block;
+        }
+
+        .sign-to-search {
+            padding: 5px 10px;
+            background-color: white;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 25px;
+            transition: color 0.3s;
+            font-weight: 900;
+        }
+
+        .sign-to-search:hover {
+            color: grey;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="header-container">
+            <a href="/home/" class="logo">Logo</a>
+
+<!--            <div class="search-container">-->
+<!--                <input type="text" id="searchInput" placeholder="Поиск по названию...">-->
+<!--            </div>-->
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Поиск по названию...">
+                <button id="resetBtn" class="sign-to-search">&#x2716;</button>
+            </div>
+            <div id="noResults" style="display: none;">Ничего не найдено</div>
+
+            <div class="header-buttons">
+                <a href="/profile/" class="btn-header">Профиль</a>
+                <a href="/chat/" class="btn-header" style="position: relative;">
+                    Чат
+                <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
+                </a>
+            </div>
+        </div>
+
+<!--        <div class="mobile-search">-->
+<!--            <input type="text" placeholder="Поиск..." id="searchInput" autocomplete="off" spellcheck="false" maxlength="100">-->
+<!--        </div>-->
+    </header>
+
+    <!-- HERO SECTION -->
+    <div class="hero">
+        <img src="{% static 'images/3.png' %}" alt="Hero banner" class="hero-img">
+        <div class="hero-overlay">
+            <h2 class="hero-title">Рейтинг топ специалистов</h2>
+            <div class="specialists-grid">
+                {% for spec in top_specialists %}
+                <a href="/profile_test/?email={{ spec.email }}" class="specialist-card">
+                    <div class="specialist-avatar">
+                        <div class="specialist-circle">{{ spec.initial }}</div>
+                        <div class="specialist-rating">{{ spec.rating }}</div>
+                    </div>
+                    <p class="specialist-label">{{ spec.surname }} {{ spec.name }}</p>
+                </a>
+                {% empty %}
+                <p style="color: white; grid-column: 1/-1;">Специалистов пока нет</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content-wrapper">
+        <button class="filter-toggle" id="filterToggle">
+            Фильтр
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+
+        <h1 class="content-title">Список мероприятий</h1>
+
+        <div class="layout-container">
+            <!-- SIDEBAR -->
+            <aside class="sidebar" id="sidebar">
+                <a href="{% url 'form_2' %}" class="cta-button">+ Создать мероприятие</a>
+                <div class="filter-panel">
+                    <h3 class="filter-title">Фильтр</h3>
+
+                    <!-- Direction -->
+                    <div class="filter-section">
+                        <h4 class="filter-section-title">Направление</h4>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-events" name="direction" value="events">
+                            <label for="filter-events">Мероприятия</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-mentors" name="direction" value="mentors">
+                            <label for="filter-mentors">Менторы</label>
+                        </div>
+                    </div>
+
+                    <!-- Language -->
+                    <div class="filter-section">
+                        <h4 class="filter-section-title">Язык</h4>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-any" name="language" value="any">
+                            <label for="filter-any">Любой</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-russian" name="language" value="russian">
+                            <label for="filter-russian">Русский</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-english" name="language" value="english">
+                            <label for="filter-english">Английский</label>
+                        </div>
+                    </div>
+
+                    <!-- Organization -->
+                    <div class="filter-section">
+                        <h4 class="filter-section-title">Организация работы</h4>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-online" name="organization" value="online">
+                            <label for="filter-online">Онлайн-встреча</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-practice" name="organization" value="practice">
+                            <label for="filter-practice">Практика</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-excursion" name="organization" value="excursion">
+                            <label for="filter-excursion">Экскурсия</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-hackathon" name="organization" value="hackathon">
+                            <label for="filter-hackathon">Хакатон</label>
+                        </div>
+                    </div>
+
+                    <!-- Field -->
+                    <div class="filter-section">
+                        <h4 class="filter-section-title">Область работы</h4>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-dev" name="field" value="development">
+                            <label for="filter-dev">Разработка</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-analytics" name="field" value="analytics">
+                            <label for="filter-analytics">Аналитика</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="filter-security" name="field" value="security">
+                            <label for="filter-security">Безопасность</label>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="filter-buttons">
+                        <button class="btn-apply" id="applyFilters">Применить</button>
+                        <button class="btn-reset" id="resetFilters">Очистить</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT GRID -->
+<!--            <a href="{% url 'form_2' %}" class="btn btn-primary">+ Создать мероприятие</a>-->
+
+
+            <main class="main-content">
+                <div class="cards-grid" id="cardsGrid">
+                    <!-- Cards will be generated by JavaScript -->
+                </div>
+            </main>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-content">
+            Контактная информация
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // Extended Data with filter attributes
+<!--        const EVENTS = [-->
+<!--            { -->
+<!--                id: 1, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "practice",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 2, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: true,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "english",-->
+<!--                    organization: "online",-->
+<!--                    field: "analytics"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 3, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "excursion",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 4, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "any",-->
+<!--                    organization: "hackathon",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 5, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: true,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "russian",-->
+<!--                    organization: "practice",-->
+<!--                    field: "security"-->
+<!--                }-->
+<!--            },-->
+<!--            { -->
+<!--                id: 6, -->
+<!--                image: "{% static 'images/4.png' %}",-->
+<!--                restricted: false,-->
+<!--                title: "Информация о практике",-->
+<!--                filters: {-->
+<!--                    direction: "events",-->
+<!--                    language: "english",-->
+<!--                    organization: "online",-->
+<!--                    field: "development"-->
+<!--                }-->
+<!--            },-->
+<!--        ];-->
+
+        const EVENTS = {{ events_json|safe }};
+        console.log('EVENTS:', EVENTS);  // ← отладка
+        console.log('Количество:', EVENTS.length);
+
+        let activeFilters = {
+            direction: [],
+            language: [],
+            organization: [],
+            field: []
+        };
+
+        // Render cards
+        function renderCards(eventsToShow = EVENTS) {
+            const cardsGrid = document.getElementById('cardsGrid');
+
+            if (eventsToShow.length === 0) {
+                cardsGrid.innerHTML = '<div class="no-results">По выбранным фильтрам не найдено результатов</div>';
+                return;
+            }
+
+<!--            cardsGrid.innerHTML = eventsToShow.map(event => `-->
+<!--                <a href="/event/${event.id}" class="card">-->
+<!--                    <div class="card-image-container">-->
+<!--                        <img src="${event.image}" alt="Event" class="card-image ${event.restricted ? 'restricted' : ''}">-->
+<!--                        <div class="card-overlay"></div>-->
+<!--                        ${event.restricted ? `-->
+<!--                            <div class="card-restricted">-->
+<!--                                <div>-->
+<!--                                    <p>Доступно с</p>-->
+<!--                                    <p>3 курса</p>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        ` : ''}-->
+<!--                        <div class="card-photo-label">Фото</div>-->
+<!--                    </div>-->
+<!--                    <h3 class="card-title">${event.title}</h3>-->
+<!--                </a>-->
+<!--            `).join('');-->
+
+            cardsGrid.innerHTML = eventsToShow.map(event => `
+                <a href="/event/${event.id}" class="card">
+                    <div class="card-image-container">
+                        <img src="${event.image}" alt="${event.title}" class="card-image ${event.restricted ? 'restricted' : ''}">
+                        <div class="card-overlay"></div>
+                        <div class="card-photo-label">Фото</div>
+                    </div>
+                    <h3 class="card-title">${event.title}</h3>
+                </a>
+            `).join('');
+        }
+
+        // Filter logic
+        function applyFilters() {
+            // Get all checked filters
+            const directions = Array.from(document.querySelectorAll('input[name="direction"]:checked')).map(el => el.value);
+            const languages = Array.from(document.querySelectorAll('input[name="language"]:checked')).map(el => el.value);
+            const organizations = Array.from(document.querySelectorAll('input[name="organization"]:checked')).map(el => el.value);
+            const fields = Array.from(document.querySelectorAll('input[name="field"]:checked')).map(el => el.value);
+
+            // Filter events
+            const filtered = EVENTS.filter(event => {
+                // If filter category is empty, show all for that category
+                if (directions.length > 0 && !directions.includes(event.filters.direction)) return false;
+                if (languages.length > 0 && !languages.includes(event.filters.language)) return false;
+                if (organizations.length > 0 && !organizations.includes(event.filters.organization)) return false;
+                if (fields.length > 0 && !fields.includes(event.filters.field)) return false;
+                return true;
+            });
+
+            renderCards(filtered);
+            console.log('Applied filters:', { directions, languages, organizations, fields });
+        }
+
+<!--        // Reset filters-->
+<!--        function resetFilters() {-->
+<!--            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {-->
+<!--                checkbox.checked = false;-->
+<!--            });-->
+<!--            renderCards(EVENTS);-->
+<!--            console.log('Filters reset');-->
+<!--        }-->
+
+<!--        // Event listeners-->
+<!--        document.getElementById('applyFilters').addEventListener('click', applyFilters);-->
+<!--        document.getElementById('resetFilters').addEventListener('click', resetFilters);-->
+
+<!--        // Filter toggle on mobile-->
+<!--        const filterToggle = document.getElementById('filterToggle');-->
+<!--        const sidebar = document.getElementById('sidebar');-->
+
+<!--        filterToggle.addEventListener('click', () => {-->
+<!--            sidebar.classList.toggle('hidden');-->
+<!--        });-->
+
+<!--        // Logo link-->
+<!--        document.querySelector('.logo').addEventListener('click', (e) => {-->
+<!--            e.preventDefault();-->
+<!--            window.location.href = '/home/';-->
+<!--        });-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Поиск в реальном времени (при каждом вводе символа)
+function realtimeSearch() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    const noResults = document.getElementById('noResults');
+
+    if (query === '') {
+        renderCards(EVENTS);
+        noResults.style.display = 'none';
+    } else {
+        const filtered = EVENTS.filter(event =>
+            event.title.toLowerCase().includes(query)
+        );
+        renderCards(filtered);
+        noResults.style.display = filtered.length === 0 ? 'block' : 'none';
+    }
+}
+
+// Сброс поиска
+function resetSearch() {
+    document.getElementById('searchInput').value = '';
+    renderCards(EVENTS);
+    document.getElementById('noResults').style.display = 'none';
+}
+
+// Навешиваем события
+document.getElementById('searchInput').addEventListener('input', realtimeSearch);
+document.getElementById('resetBtn').addEventListener('click', resetSearch);
+
+// Загружаем все карточки
+renderCards();
+
+
+
+
+
+
+
+
+
+    </script>
+</body>
+</html>
