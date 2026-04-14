@@ -1,8 +1,6 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
 import requests
 import json
-from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from .models import Open1, Open3, Event
 from django.contrib import messages
@@ -10,19 +8,15 @@ from .forms import ProfileForm, EventForm
 from django.templatetags.static import static
 from django.db.models import Q
 
-import json
 import mimetypes
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-
-import requests
 from django.contrib.auth import logout
-from django.contrib.auth.decorators import login_required
 from .models import (
     Chat,
     ChatAttachment,
@@ -413,7 +407,7 @@ def serialize_attachment(attachment):
     }
 
 
-def serialize_message(message, current_user):
+def serialize_message(message, current_user, participants):
     if message.message_type == ChatMessage.TYPE_SYSTEM:
         return {
             "id": message.id,
@@ -428,14 +422,49 @@ def serialize_message(message, current_user):
         "type": "outgoing" if message.sender_id == current_user.id else "incoming",
         "text": message.text,
         "sentAt": message.created_at.isoformat(),
+        "edited": message.is_edited,
+        "editedAt": message.edited_at.isoformat() if message.edited_at else None,
+        "deleted": message.is_deleted,
+        "read": is_message_read_for_current_user(message, current_user, participants),
         "attachments": [serialize_attachment(item) for item in message.attachments.all()],
     }
 
+def is_message_read_for_current_user(message, current_user, participants):
+    current_participant = next(
+        (
+            item for item in participants
+            if item.user_id == current_user.id and item.is_active and not item.is_hidden
+        ),
+        None
+    )
+
+    if not current_participant:
+        return False
+
+    if message.sender_id == current_user.id:
+        other_participants = [
+            item for item in participants
+            if item.user_id != current_user.id and item.is_active and not item.is_hidden
+        ]
+
+        if not other_participants:
+            return False
+
+        return all(
+            item.last_read_at and item.last_read_at >= message.created_at
+            for item in other_participants
+        )
+
+    if not current_participant.last_read_at:
+        return False
+
+    return current_participant.last_read_at >= message.created_at
 
 def serialize_chat(participant, current_user, profile_map):
     chat = participant.chat
     unread_count = get_unread_count_for_participant(participant, current_user)
-
+    participants = list(chat.participants.all())
+    
     return {
         "id": chat.id,
         "title": chat.title,
@@ -444,7 +473,10 @@ def serialize_chat(participant, current_user, profile_map):
         "pinned": participant.is_pinned,
         "hidden": participant.is_hidden,
         "avatar": CHAT_USER_AVATAR,
-        "messages": [serialize_message(message, current_user) for message in chat.messages.all()],
+        "messages": [
+            serialize_message(message, current_user, participants)
+            for message in chat.messages.all()
+        ],
     }
 
 
@@ -628,10 +660,10 @@ def chat_page(request):
 
 
 @login_required
-def form_1(request, event_id):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
+def form_1(request, event_id=None):
+    if event_id is None:
+        user = Open1.objects.get(email=request.session['user_email'])
+        return render(request, 'blog/Форма_1.html', {'user': user})
 
     try:
         event = Event.objects.get(id=event_id)
@@ -645,11 +677,7 @@ def form_2(request):
     print("=== FORM_2 ВЫЗВАН ===")
     print("Метод:", request.method)
     print("POST данные:", request.POST)
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
-
-    user = Open3.objects.get(id=user_id)
+    user = Open3.objects.get(email=request.session['user_email'])
 
     if request.method == 'POST':
         # Получаем данные из формы
@@ -707,14 +735,6 @@ def form_3(request, event_id):
         return redirect('form_1', event_id=event.id)  # ← возврат на просмотр
 
     return render(request, 'blog/Форма_3.html', {'event': event})
-def form_1(request):
-    user = Open1.objects.get(email=request.session['user_email'])
-    return render(request, 'blog/Форма_1.html', {'user': user})
-
-@login_required
-def form_2(request):
-    user = Open1.objects.get(email=request.session['user_email'])
-    return render(request, 'blog/Форма_2.html', {'user': user})
 
 @login_required
 def profile_test(request):
@@ -778,23 +798,7 @@ def view_profile(request):
 
 
 def create_event(request):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
-
-    user = Open3.objects.get(id=user_id)
-
-    if request.method == 'POST':
-        form = EventForm(request.POST)
-        if form.is_valid():
-            event = form.save(commit=False)
-            event.user = user
-            event.save()
-            return redirect('home')
-    else:
-        form = EventForm()
-
-    return render(request, 'blog/Форма_2.html', {'form': form})
+    return form_2(request)
 
 
 
@@ -996,7 +1000,116 @@ def chat_delete_api(request):
 
     return build_chat_response(current_user)
 
+@login_required
+@require_POST
+def chat_update_message_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    message_id = payload.get("message_id")
+    text = (payload.get("text") or "").strip()
 
+    if not text:
+        return JsonResponse({"ok": False, "error": "Текст сообщения пустой."}, status=400)
+
+    message = get_object_or_404(
+        ChatMessage,
+        id=message_id,
+        sender=current_user,
+        message_type=ChatMessage.TYPE_USER,
+        is_deleted=False,
+    )
+
+    if message.text == text:
+        return build_chat_response(current_user, activeChatId=message.chat_id)
+
+    with transaction.atomic():
+        message.text = text
+        message.is_edited = True
+        message.edited_at = timezone.now()
+        message.save(update_fields=["text", "is_edited", "edited_at"])
+
+        message.chat.updated_at = timezone.now()
+        message.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(chat=message.chat, user=current_user).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=message.chat_id)
+
+
+@login_required
+@require_POST
+def chat_delete_message_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    message_id = payload.get("message_id")
+
+    message = get_object_or_404(
+        ChatMessage,
+        id=message_id,
+        sender=current_user,
+        message_type=ChatMessage.TYPE_USER,
+        is_deleted=False,
+    )
+
+    chat_id = message.chat_id
+
+    with transaction.atomic():
+        for attachment in message.attachments.all():
+            if attachment.file:
+                attachment.file.delete(save=False)
+
+        message.delete()
+        message.chat.updated_at = timezone.now()
+        message.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(chat_id=chat_id, user=current_user).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=chat_id)
+
+
+@login_required
+@require_POST
+def chat_delete_api(request):
+    current_user = get_current_open1_user(request)
+    payload = parse_request_json(request)
+    chat_id = payload.get("chat_id")
+
+    participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    display_name = get_user_display_name(
+        current_user,
+        get_open3_map_by_emails([current_user.email])
+    )
+
+    chat = participant.chat
+
+    with transaction.atomic():
+        participant.is_hidden = True
+        participant.is_active = False
+        participant.is_pinned = False
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
+
+        has_active_participants = ChatParticipant.objects.filter(
+            chat=chat,
+            is_active=True,
+            is_hidden=False,
+        ).exists()
+
+        if has_active_participants:
+            create_system_message(chat, f"{display_name} вышел из чата", sender=current_user)
+        else:
+            for attachment in ChatAttachment.objects.filter(message__chat=chat):
+                if attachment.file:
+                    attachment.file.delete(save=False)
+
+            chat.delete()
+
+    return build_chat_response(current_user)
 
 
 def logout_view(request):

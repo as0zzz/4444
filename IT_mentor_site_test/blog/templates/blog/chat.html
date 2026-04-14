@@ -286,6 +286,7 @@
         }
 
         .chat-list-search {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 0.6rem;
@@ -295,6 +296,8 @@
         }
 
         .chat-list-search input {
+            flex: 1;
+            padding-right: 2.6rem;
             width: 100%;
             border: none;
             background: transparent;
@@ -323,14 +326,21 @@
         height: 0;
         }
 
-        .chat-meta-title,
-        .chat-meta-text,
-        .chat-panel-title strong,
-        .chat-panel-title span {
+        .chat-item-content {
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.18rem;
+        }
+
+        .chat-meta-pinned {
+            font-size: 0.72rem;
+            line-height: 1.2;
+            color: #DE7358;
+            font-weight: 600;
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .chat-item {
@@ -340,13 +350,17 @@
             border-radius: 22px;
             padding: 0.75rem;
             display: grid;
-            grid-template-columns: 56px minmax(0, 1fr) auto;
+            grid-template-columns: 56px 1fr auto;
             gap: 0.85rem;
             align-items: center;
             text-align: left;
             cursor: pointer;
             transition: 0.2s ease;
             background-clip: padding-box;
+        }
+
+        .chat-item > div:nth-child(2) {
+            min-width: 0;
         }
 
         .chat-item:hover {
@@ -388,6 +402,10 @@
         }
 
         .chat-meta-title {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             font-size: 1rem;
             font-weight: 700;
             line-height: 1.2;
@@ -396,6 +414,10 @@
         }
 
         .chat-meta-text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             font-size: 0.86rem;
             color: #7b7b7b;
             line-height: 1.3;
@@ -501,6 +523,7 @@
             gap: 0.45rem;
             margin-top: 0.45rem;
             flex-wrap: wrap;
+            width: 100%;
         }
 
         .message-edited {
@@ -512,6 +535,23 @@
             background: rgba(124, 124, 124, 0.08);
             display: inline-flex;
             align-items: center;
+        }
+
+        .message-read-dot {
+            margin-left: auto;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .message-read-dot.is-unread {
+            background: #C7CDD6;
+        }
+
+        .message-read-dot.is-read {
+            background: #DE7358;
         }
 
         .message-text {
@@ -1314,6 +1354,33 @@
             color: #6B7280;
         }
 
+        .chat-search-clear {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: #F3F4F6;
+            color: #4B5563;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .chat-search-clear:hover {
+            background: #DE7358;
+            color: #ffffff;
+        }
+
+        .chat-search-clear[hidden] {
+            display: none !important;
+        }
+
         .chat-send-btn {
             width: 38px;
             height: 38px;
@@ -1473,10 +1540,6 @@
 
             <div class="header-buttons">
                 <a href="/profile/" class="btn-header">Профиль</a>
-                <form action="/logout/" method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-header">Выйти</button>
-                </form>
                 <a href="/chat/" class="btn-header" style="position: relative;">
                     Чат
                     <span class="notification-badge" id="chatHeaderBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>
@@ -1510,7 +1573,15 @@
                             <circle cx="11" cy="11" r="8"></circle>
                             <path d="m21 21-4.35-4.35"></path>
                         </svg>
+
                         <input type="text" id="chatSearch" placeholder="Поиск...">
+
+                        <button type="button" class="chat-search-clear" id="chatSearchClearBtn" aria-label="Очистить поиск" hidden>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                                <path d="M6 6L18 18"></path>
+                                <path d="M18 6L6 18"></path>
+                            </svg>
+                        </button>
                     </label>
                 </div>
 
@@ -1621,7 +1692,7 @@
                     <path d="M176.15,99.94a9.67,9.67,0,0,0-14,0l-51.5,51a41,41,0,0,1-58-58l48.5-48.5c10.5-10.5,28-10.5,39,0,8.5,8.5,8.5,22.5,0,31.5l-52.5,52c-3.5,3.5-9,3.5-12,0-3.5-3.5-3.5-9,0-12l51-51a9.9,9.9,0,0,0-14-14l-51,51c-11,11-11,29,0,40.5,11,11,29,11,40.5,0l52.5-52.5a42,42,0,0,0,0-59.5,47.38,47.38,0,0,0-67,0l-48.5,48.5a61.16,61.16,0,0,0,86.5,86.5l51-51A12,12,0,0,0,176.15,99.94Z"/>
                 </svg>
             </span>
-            <span id="togglePinChatLabel">Закрепить чат</span>
+            <span id="togglePinChatLabel">Закрепить</span>
         </button>
 
         <button type="button" class="chat-context-action" id="renameChatAction">
@@ -1632,7 +1703,7 @@
                     <path d="M21.75 22.0196H15.75V6.01959H21.75C23.5449 6.01959 25 7.47467 25 9.26959V18.7696C25 20.5645 23.5449 22.0196 21.75 22.0196Z"/>
                 </svg>
             </span>
-            <span>Переименовать чат</span>
+            <span>Переименовать</span>
         </button>
 
         <button type="button" class="chat-context-action danger" id="deleteChatAction">
@@ -1641,7 +1712,7 @@
                     <path d="M864 256H736v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80H160c-17.7 0-32 14.3-32 32v32c0 4.4 3.6 8 8 8h60.4l24.7 523c1.6 34.1 29.8 61 63.9 61h454c34.2 0 62.3-26.8 63.9-61l24.7-523H888c4.4 0 8-3.6 8-8v-32c0-17.7-14.3-32-32-32zm-200 0H360v-72h304v72z"/>
                 </svg>
             </span>
-            <span>Удалить чат</span>
+            <span>Удалить</span>
         </button>
     </div>
 
@@ -1896,6 +1967,7 @@
                 edited: Boolean(message.edited),
                 editedAt: message.editedAt || null,
                 deleted: Boolean(message.deleted),
+                read: Boolean(message.read),
                 attachments: Array.isArray(message.attachments)
                     ? message.attachments.map((attachment) => ({
                         id: Number(attachment.id) || null,
@@ -2066,6 +2138,7 @@
         const panelStatus = document.getElementById("panelStatus");
         const chatMessages = document.getElementById("chatMessages");
         const chatSearch = document.getElementById("chatSearch");
+        const chatSearchClearBtn = document.getElementById("chatSearchClearBtn");
         const chatMessageInput = document.getElementById("chatMessageInput");
         const chatMessageSizer = document.getElementById("chatMessageSizer");
         const chatEditingBanner = document.getElementById("chatEditingBanner");
@@ -2112,6 +2185,10 @@
         const closeDeleteMessageConfirm = document.getElementById("closeDeleteMessageConfirm");
         const cancelDeleteMessage = document.getElementById("cancelDeleteMessage");
         const confirmDeleteMessage = document.getElementById("confirmDeleteMessage");
+
+        function updateChatSearchClearButton() {
+            chatSearchClearBtn.hidden = !chatSearch.value.trim();
+        }
 
         function hideEditingBanner() {
             editingMessageId = null;
@@ -2328,6 +2405,7 @@
                         <div class="message-meta">
                             <span class="message-time">${formatMessageTime(item.sentAt)}</span>
                             ${item.edited ? `<span class="message-edited">Изменено</span>` : ""}
+                            <span class="message-read-dot ${item.read ? "is-read" : "is-unread"}"></span>
                         </div>
                     </div>
                 </div>
@@ -2491,7 +2569,7 @@
             }
 
             contextChatIndex = index;
-            togglePinChatLabel.textContent = targetChat.pinned ? "Открепить чат" : "Закрепить чат";
+            togglePinChatLabel.textContent = targetChat.pinned ? "Открепить" : "Закрепить";
             chatContextMenu.classList.add("show");
 
             requestAnimationFrame(() => {
@@ -2922,8 +3000,9 @@
                             <img src="${item.chat.avatar}" alt="${escapeHtml(item.chat.title)}">
                         </div>
 
-                        <div>
+                        <div class="chat-item-content">
                             <div class="chat-meta-title">${escapeHtml(item.chat.title)}</div>
+                            ${item.chat.pinned ? `<div class="chat-meta-pinned">Закреплен</div>` : ""}
                             <div class="chat-meta-text">${escapeHtml(item.chat.subtitle)}</div>
                         </div>
 
@@ -3027,6 +3106,14 @@
         // Event listeners
         chatSearch.addEventListener("input", (event) => {
             renderChatList(event.target.value);
+            updateChatSearchClearButton();
+        });
+
+        chatSearchClearBtn.addEventListener("click", () => {
+            chatSearch.value = "";
+            renderChatList("");
+            updateChatSearchClearButton();
+            chatSearch.focus();
         });
 
         chatForm.addEventListener("submit", async (event) => {
@@ -3163,6 +3250,7 @@
         });
 
         // Init
+        updateChatSearchClearButton();
         renderChatList();
         activateChat(activeChatIndex);
         resetTextarea();

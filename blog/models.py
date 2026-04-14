@@ -1,40 +1,48 @@
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 import os
 import uuid
-
-from django.db import models
 from django.utils import timezone
 
 
-
-class Open1(models.Model):
+class Users(models.Model):
     email = models.EmailField(unique=True)
-    pa = models.CharField(max_length=255)
+    role = models.CharField(max_length=20)
 
     class Meta:
-        db_table = 'open_1'
+        db_table = 'users'
 
 
-class Open3(models.Model):
+class Emails_workers(models.Model):
+    email = models.EmailField(unique=True)
+
+    class Meta:
+        db_table = 'emails_workers'
+
+
+class Mentors(models.Model):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=100)
     patronymic = models.CharField(max_length=100, blank=True, null=True)
     surname = models.CharField(max_length=100)
     phone = models.CharField(max_length=12)
-    pa = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
 
     class Meta:
-        db_table = 'open_3'
+        db_table = 'mentors'
 
 
+class Interns(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100)
+    phone = models.CharField(max_length=12)
+    password = models.CharField(max_length=255)
 
-
-
-
-
+    class Meta:
+        db_table = 'interns'
 
 
 def chat_attachment_upload_to(instance, filename):
@@ -46,7 +54,7 @@ class Chat(models.Model):
     title = models.CharField(max_length=255)
     subtitle = models.CharField(max_length=255, blank=True, default="")
     created_by = models.ForeignKey(
-        Open1,
+        Users,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -62,7 +70,7 @@ class Chat(models.Model):
 
 class ChatParticipant(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="participants")
-    user = models.ForeignKey(Open1, on_delete=models.CASCADE, related_name="chat_participants")
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="chat_participants")
     joined_at = models.DateTimeField(auto_now_add=True)
     last_read_at = models.DateTimeField(null=True, blank=True)
     is_pinned = models.BooleanField(default=False)
@@ -84,7 +92,7 @@ class ChatMessage(models.Model):
 
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(
-        Open1,
+        Users,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -93,10 +101,6 @@ class ChatMessage(models.Model):
     message_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_USER)
     text = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    edited_at = models.DateTimeField(null=True, blank=True)
-    is_deleted = models.BooleanField(default=False)
-    is_edited = models.BooleanField(default=False)
 
     class Meta:
         db_table = "chat_message"
@@ -116,21 +120,8 @@ class ChatAttachment(models.Model):
         ordering = ["id"]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 class UserData(models.Model):
-    user = models.OneToOneField(Open3, on_delete=models.CASCADE, related_name='extra_data')
+    user = models.OneToOneField(Users, on_delete=models.CASCADE, related_name='extra_data')
 
     event_phone = models.CharField(max_length=12)
     fio = models.CharField(max_length=100)
@@ -147,12 +138,9 @@ class UserData(models.Model):
         db_table = 'user_data'
 
 
-
-
 class Event(models.Model):
-    user = models.ForeignKey(Open3, on_delete=models.CASCADE, related_name='events')
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='events')
 
-    # Данные из формы
     event_name = models.CharField(max_length=200, verbose_name='Название мероприятия')
     event_phone = models.CharField(max_length=20, blank=True, verbose_name='Телефон')
     event_email = models.EmailField(blank=True, verbose_name='Email')
@@ -160,13 +148,9 @@ class Event(models.Model):
     field_of_work = models.CharField(max_length=100, verbose_name='Сфера деятельности')
     organization_of_work = models.CharField(max_length=200, verbose_name='Организация')
 
-    # Для карточки на главной
     image = models.ImageField(upload_to='images/4.png', blank=True, null=True, verbose_name='Фото')
-
     language = models.CharField(max_length=20, default='russian', verbose_name='Язык')
-
     created_at = models.DateTimeField(auto_now_add=True)
-
     event_description = models.TextField(verbose_name='Описание мероприятия')
 
     def __str__(self):
@@ -176,76 +160,30 @@ class Event(models.Model):
         db_table = 'events'
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Users(models.Model):
-    email = models.EmailField(unique=True)
-    role = models.CharField(max_length=20)
-
-    class Meta:
-        db_table = 'users'   # новая таблица
-
-class Emails_workers(models.Model):
-    email = models.EmailField(unique=True)
-
-    class Meta:
-        db_table = 'emails_workers'
-
-class Mentors(models.Model):
-    email = models.EmailField(unique=True)
-    name = models.CharField(max_length=100)
-    patronymic = models.CharField(max_length=100, blank=True, null=True)
-    surname = models.CharField(max_length=100)
-    phone = models.CharField(max_length=12)
-    password = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'mentors'
-
-class Interns(models.Model):
-    email = models.EmailField(unique=True)
-    name = models.CharField(max_length=100)
-    patronymic = models.CharField(max_length=100, blank=True, null=True)
-    surname = models.CharField(max_length=100)
-    phone = models.CharField(max_length=12)
-    password = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'interns'
-
-
-
-
-
-
-
-
 class Review(models.Model):
-    # Email того, кто оставляет отзыв (берем из сессии)
     reviewer_email = models.EmailField(verbose_name='Email оценивающего')
-
-    # Email того, кого оценивают (ментора или стажера)
     target_email = models.EmailField(verbose_name='Email оцениваемого')
-
-    # Сама оценка от 1 до 10
     score = models.IntegerField(verbose_name='Оценка')
-
-    # Текст отзыва (может быть пустым, поэтому blank=True, null=True)
     comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
-
-    # Дата выставления оценки (заполнится сама автоматически)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата оценки')
 
     def __str__(self):
         return f"Оценка {self.score} от {self.reviewer_email} для {self.target_email}"
+
+class Open1(models.Model):
+    email = models.EmailField(unique=True)
+    pa = models.CharField(max_length=255, blank=True, null=True)  # пароль
+
+    class Meta:
+        db_table = 'open1'
+
+class Open3(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100, blank=True, null=True)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=12, blank=True, null=True)
+    pa = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        db_table = 'open3'

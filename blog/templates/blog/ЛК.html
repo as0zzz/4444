@@ -267,18 +267,6 @@
            margin-top: 1rem;
        }
 
-       .profile-logout {
-           margin-top: 1rem;
-           display: flex;
-           justify-content: flex-start;
-       }
-
-       .profile-logout .btn-header {
-           width: 100%;
-           justify-content: center;
-           text-align: center;
-       }
-
        /* Rating Card */
        .rating-card {
            display: flex;
@@ -830,6 +818,10 @@
 
             <div class="header-buttons">
                 <a href="/profile/" class="btn-header">Профиль</a>
+                <form action="/logout/" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-header">Выйти</button>
+                </form>
                 <a href="/chat/" class="btn-header" style="position: relative;">
                     Чат
                     <!--<span class="notification-badge" id="headerChatBadge" {% if not chat_unread_count %}hidden{% endif %}>{% if chat_unread_count %}{% if chat_unread_count > 99 %}99+{% else %}{{ chat_unread_count }}{% endif %}{% endif %}</span>-->
@@ -860,18 +852,14 @@
                            {{ user.name }}<br>{{ user.patronymic }}<br>{{ user.surname }}
                        </div>
                        <div class="profile-info">
-                           <div class="info-label">{{ user.email }}</div>
-                           <div class="info-label">{{ user.phone }}</div>
-                           <div class="info-label">Институт</div>
-                           <div class="info-label">Курс обучения</div>
+                            <div class="info-label">{{ user.email }}</div>
+                            <div class="info-label">{{ user.phone }}</div>
+                            {% if role == 'intern' %}
+                                <div class="info-label">Институт</div>
+                                <div class="info-label">Курс обучения</div>
+                            {% endif %}
                        </div>
                        <div class="user-id">User ID: {{ user.id }}</div>
-                       <div class="profile-logout">
-                           <form action="/logout/" method="post" style="width: 100%;">
-                               {% csrf_token %}
-                               <button type="submit" class="btn-header">Выйти</button>
-                           </form>
-                       </div>
                    </div>
 
                    <!-- Rating Card -->
