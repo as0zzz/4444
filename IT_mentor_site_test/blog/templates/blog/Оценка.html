@@ -83,6 +83,23 @@
             color: white;
         }
 
+        /* Поле для ввода email */
+        .email-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .email-input:focus {
+            border-color: var(--accent);
+        }
+
         /* Поле комментария */
         .comment-area {
             width: 100%;
@@ -123,6 +140,112 @@
             background-color: var(--border-color);
             cursor: not-allowed;
         }
+
+        /* --- Стили для кастомного списка выбора --- */
+        .select-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        /* Кнопка, которая открывает список */
+        .select-trigger {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .select-trigger:focus, .select-trigger.active {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        /* Само выпадающее меню */
+        .select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid var(--accent);
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            z-index: 100;
+            display: none; /* Скрыто по умолчанию */
+            overflow: hidden;
+        }
+
+        .select-dropdown.show {
+            display: block;
+        }
+
+        /* Поле поиска внутри меню */
+        .search-box {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            background: #F9FAFB;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent);
+        }
+
+        /* Список менторов с прокруткой */
+        .mentors-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .mentor-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .mentor-item:last-child {
+            border-bottom: none;
+        }
+
+        .mentor-item:hover {
+            background-color: #FDF2F0; /* Легкий акцентный фон */
+        }
+
+        .mentor-name {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+
+        .mentor-email {
+            font-size: 0.875rem;
+            color: #6B7280; /* Серый текст как в референсе */
+        }
+
+        .mentor-item.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -133,6 +256,29 @@
 
         <form id="reviewForm">
             {% csrf_token %}
+            
+            <div class="select-container" id="mentorSelect">
+                <div class="select-trigger" id="selectTrigger">
+                    <span id="selectedMentorText">Выберите специалиста...</span>
+                    <span>▼</span>
+                </div>
+                
+                <div class="select-dropdown" id="selectDropdown">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Поиск по ФИО...">
+                    </div>
+                    <div class="mentors-list" id="mentorsList">
+                        {% for spec in specialists %}
+                        <div class="mentor-item" data-email="{{ spec.email }}">
+                            <div class="mentor-name">{{ spec.surname }} {{ spec.name }} {{ spec.patronymic }}</div>
+                            <div class="mentor-email">{{ spec.email }}</div>
+                        </div>
+                        {% empty %}
+                        <div style="padding: 1rem; color: gray; text-align: center;">Специалисты не найдены</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
             
             <div class="rating-container" id="ratingContainer">
                 </div>
@@ -148,6 +294,64 @@
             const container = document.getElementById('ratingContainer');
             const submitBtn = document.getElementById('submitBtn');
             const reviewForm = document.getElementById('reviewForm');
+            // --- ЛОГИКА ВЫПАДАЮЩЕГО СПИСКА МЕНТОРОВ ---
+            const selectTrigger = document.getElementById('selectTrigger');
+            const selectDropdown = document.getElementById('selectDropdown');
+            const searchInput = document.getElementById('searchInput');
+            const mentorItems = document.querySelectorAll('.mentor-item');
+            const selectedMentorText = document.getElementById('selectedMentorText');
+            
+            let finalTargetEmail = null; // Здесь будем хранить email для отправки
+
+            // 1. Открытие/закрытие меню по клику
+            selectTrigger.addEventListener('click', (e) => {
+                e.stopPropagation(); // Чтобы клик не ушел на document
+                selectDropdown.classList.toggle('show');
+                selectTrigger.classList.toggle('active');
+                if (selectDropdown.classList.contains('show')) {
+                    searchInput.focus(); // Сразу ставим курсор в поиск
+                }
+            });
+
+            // 2. Закрытие меню при клике вне его области
+            document.addEventListener('click', (e) => {
+                if (!document.getElementById('mentorSelect').contains(e.target)) {
+                    selectDropdown.classList.remove('show');
+                    selectTrigger.classList.remove('active');
+                }
+            });
+
+            // 3. Живой поиск (фильтрация по ФИО)
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                mentorItems.forEach(item => {
+                    // Ищем только по имени (внутри .mentor-name)
+                    const name = item.querySelector('.mentor-name').textContent.toLowerCase();
+                    if (name.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+
+            // 4. Выбор ментора из списка
+            mentorItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    // Забираем данные
+                    const name = item.querySelector('.mentor-name').textContent;
+                    finalTargetEmail = item.getAttribute('data-email');
+                    
+                    // Меняем текст кнопки
+                    selectedMentorText.textContent = name;
+                    selectedMentorText.style.color = 'var(--text-dark)';
+                    selectedMentorText.style.fontWeight = '700';
+
+                    // Закрываем меню
+                    selectDropdown.classList.remove('show');
+                    selectTrigger.classList.remove('active');
+                });
+            });
             
             let selectedScore = 0;
             let ratingButtons = [];
@@ -195,14 +399,20 @@
             reviewForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
+                // 1. СНАЧАЛА проверяем, выбран ли специалист (Защита от дурака)
+                if (!finalTargetEmail) {
+                    alert('Пожалуйста, выберите специалиста из списка.');
+                    return; // Прерываем отправку, кнопка остается активной
+                }
+                
                 const comment = document.getElementById('reviewComment').value;
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-                // Блокируем кнопку от двойного клика
+                // 2. ТЕПЕРЬ блокируем кнопку от двойного клика
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Отправка...';
-
-                // Здесь нужно указать URL вашей view в Django
+                
+                // 3. Отправляем запрос
                 fetch('/rating/', {
                     method: 'POST',
                     headers: {
@@ -212,8 +422,7 @@
                     body: JSON.stringify({
                         score: selectedScore,
                         comment: comment,
-                        // Используем шаблонизатор Django, чтобы вставить email нужного человека
-                        target_email: '{{ target_user_email }}' 
+                        target_email: finalTargetEmail // Передаем переменную выбранного email
                     })
                 })
                 .then(response => {

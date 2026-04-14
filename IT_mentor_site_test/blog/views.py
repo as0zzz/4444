@@ -1119,9 +1119,8 @@ def logout_view(request):
 
 @login_required
 def test_review_page(request):
-    # Для теста захардкодим email того, кого мы будем оценивать. 
-    # Так как ты в базе один, давай оценим выдуманного ментора (или можешь вписать свой chuvakov015@mail.com)
-    context = {
-        'target_user_email': 'test_mentor@mail.com' 
-    }
-    return render(request, 'blog/Оценка.html', context)
+    # Получаем всех специалистов из базы данных
+    specialists = Open3.objects.all()
+    
+    # Передаем их в шаблон под ключом 'specialists'
+    return render(request, 'blog/Оценка.html', {'specialists': specialists})
