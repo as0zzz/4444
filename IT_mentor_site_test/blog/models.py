@@ -174,19 +174,76 @@ class Event(models.Model):
 
     class Meta:
         db_table = 'events'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Users(models.Model):
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = 'users'   # новая таблица
+
+class Emails_workers(models.Model):
+    email = models.EmailField(unique=True)
+
+    class Meta:
+        db_table = 'emails_workers'
+
+class Mentors(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100)
+    phone = models.CharField(max_length=12)
+    password = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'mentors'
+
+class Interns(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100)
+    phone = models.CharField(max_length=12)
+    password = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'interns'
+
+
+
+
+
+
+
+
 class Review(models.Model):
     # Email того, кто оставляет отзыв (берем из сессии)
     reviewer_email = models.EmailField(verbose_name='Email оценивающего')
-    
+
     # Email того, кого оценивают (ментора или стажера)
     target_email = models.EmailField(verbose_name='Email оцениваемого')
-    
+
     # Сама оценка от 1 до 10
     score = models.IntegerField(verbose_name='Оценка')
-    
+
     # Текст отзыва (может быть пустым, поэтому blank=True, null=True)
     comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
-    
+
     # Дата выставления оценки (заполнится сама автоматически)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата оценки')
 
