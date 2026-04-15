@@ -2,7 +2,11 @@ from django.shortcuts import render, redirect
 import requests
 import json
 from django.contrib.auth.decorators import login_required
-from .models import Open1, Open3, Event
+from .models import (
+    Users, Mentors, Interns, Emails_workers,
+    Open1, Open3, Event, Review,
+    Chat, ChatAttachment, ChatMessage, ChatParticipant
+)
 from django.contrib import messages
 from .forms import ProfileForm, EventForm
 from django.templatetags.static import static
@@ -17,17 +21,9 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib.auth import logout
-from .models import (
-    Chat,
-    ChatAttachment,
-    ChatMessage,
-    ChatParticipant,
-    Open1,
-    Open3,
-)
+
 from django.contrib import messages
 
-from .models import Open1, Open3, Review
 from django.db.models import Avg
 from django.contrib import messages
 from django.http import JsonResponse
@@ -79,38 +75,34 @@ def open_1(request):
     print("Метод запроса:", request.method)
 
     if request.method == 'POST':
-        print("Оригинальные POST данные:", dict(request.POST))
-
-        normalized_post = {}
-        for key, value in request.POST.items():
-            normalized_post[key.lower()] = value
-
-        print("Нормализованные POST данные:", normalized_post)
-
-        email = normalized_post.get('email')
-        password = normalized_post.get('pa')
+        data = {k.lower(): v for k, v in request.POST.items()}
+        email = data.get('email')
+        password = data.get('pa')
 
         print(f"Извлечено: email={email}, password={password}")
-
-        if email and password:
-            try:
-                user = Open1.objects.get(email=email, pa=password)
-
-                request.session['user_id'] = user.id
-                request.session['user_email'] = user.email
-                request.session['is_authenticated'] = True
-
-                print(f"✅ Успешный вход! ID: {user.id}")
-                print("Сессия:", dict(request.session))
-
-                return redirect('home')
-            except Open1.DoesNotExist:
-                print("❌ Пользователь не найден")
-                return render(request, 'blog/Вход_1.html', {'error': 'Неверные данные'})
-        else:
-            print("❌ Email или пароль не найдены")
-            return render(request, 'blog/Вход_1.html', {'error': 'Заполните все поля'})
-
+        # Проверка среди менторов
+        try:
+            user = Mentors.objects.get(email=email, password=password)
+            request.session['user_id'] = user.id
+            request.session['role'] = 'mentor'
+            request.session['user_email'] = user.email
+            request.session['is_authenticated'] = True
+            ensure_open1_and_open3(user.email, user.name, user.patronymic, user.surname, user.phone, role='mentor')
+            return redirect('home')
+        except Mentors.DoesNotExist:
+            pass
+        # Проверка среди практикантов
+        try:
+            user = Interns.objects.get(email=email, password=password)
+            request.session['user_id'] = user.id
+            request.session['role'] = 'intern'
+            request.session['user_email'] = user.email
+            request.session['is_authenticated'] = True
+            ensure_open1_and_open3(user.email, user.name, user.patronymic, user.surname, user.phone, role='intern')
+            return redirect('home')
+        except Interns.DoesNotExist:
+            pass
+        return render(request, 'blog/Вход_1.html', {'error': 'Неверные данные'})
     return render(request, 'blog/Вход_1.html')
 
 
@@ -121,6 +113,13 @@ def open_1(request):
 
 
 def open_3(request):
+    role = request.GET.get('role')
+    if not role or role not in ['mentor', 'intern']:
+        return redirect('open_2')
+
+    role_map = {'mentor': 'ментор', 'intern': 'практикант'}
+    role_ru = role_map.get(role)
+    
     if request.method == 'POST':
         email = request.POST.get('email')
         name = request.POST.get('name')
@@ -128,173 +127,53 @@ def open_3(request):
         surname = request.POST.get('surname')
         phone = request.POST.get('phone')
         password = request.POST.get('pa')
+        confirm = request.POST.get('confirm')
 
         print(f"Получены данные: {email}, {password}")
 
-        result = check_user_in_nocodb_2(email, name, patronymic, surname, phone, password)
+        if password != confirm:
+            return render(request, 'blog/Вход_3.html', {'error': 'Пароли не совпадают', 'role': role})
 
-        if result:
-            request.session['user_id'] = result['id']
-            request.session['user_email'] = result['email']
-            request.session['user_name'] = result.get('name', '')
-            request.session['user_patronymic'] = result.get('patronymic', '')
-            request.session['user_surname'] = result.get('surname', '')
-            request.session['user_phone'] = result.get('phone', '')
-            request.session['is_authenticated_2'] = True
-            request.session.modified = True
-
-            if result['found_in'] == 'open1':
-                return render(request, 'blog/Вход_1.html', {
-                    'error': 'Пользователь уже зарегистрирован в системе'
+        if role == 'mentor':
+            if not Emails_workers.objects.filter(email=email).exists():
+                return render(request, 'blog/Вход_3.html', {
+                    'error': 'Ваша почта не найдена в списке допустимых. Регистрация ментора возможна только для корпоративных адресов.',
+                    'role': role
                 })
-            else:
-                return render(request, 'blog/Главная страница.html')
-        else:
-            return render(request, 'blog/Вход_3.html', {
-                'error': 'Ошибка регистрации. Проверьте данные.'
-            })
 
-    return render(request, 'blog/Вход_3.html')
+        if (Mentors.objects.filter(email=email).exists() or
+            Interns.objects.filter(email=email).exists() or
+            Users.objects.filter(email=email).exists()):
+            return render(request, 'blog/Вход_3.html', {'error': 'Пользователь с таким email уже существует', 'role': role})
 
+        Model = Mentors if role == 'mentor' else Interns
+        try:
+            new_profile = Model.objects.create(
+                email=email,
+                name=name,
+                patronymic=patronymic or '',
+                surname=surname,
+                phone=phone,
+                password=password
+            )
+            Users.objects.create(email=email, role=role_ru)
 
-def check_user_in_nocodb(email, pa, request=None):
-    """Проверка пользователя в таблице Open1"""
-    try:
-        user = Open1.objects.get(email=email, pa=pa)
-
-        if request:
-            request.session['user_id'] = user.id
-            request.session['user_email'] = user.email
-            request.session['user_name'] = user.name
-            request.session['user_patronymic'] = user.patronymic
-            request.session['user_surname'] = user.surname
-            request.session['user_phone'] = user.phone
+            request.session['user_id'] = new_profile.id
+            request.session['role'] = role
+            request.session['user_email'] = email
             request.session['is_authenticated'] = True
 
-        return {
-            'id': user.id,
-            'email': user.email,
-            'name': user.name,
-            'patronymic': user.patronymic,
-            'pa': user.pa
-        }
+            ensure_open1_and_open3(email, name, patronymic, surname, phone, role=role)
 
-    except Open1.DoesNotExist:
-        return None
-
-
-
-
-
-def check_user_in_nocodb_2(email, name, patronymic, surname=None, phone=None, pa=None, request=None):
-    """Проверка в open_1, если нет - в open_3, если нет - создает в open_3"""
-
-    print("\n" + "=" * 60)
-    print("check_user_in_nocodb_2 ВЫЗВАНА")
-    print(f"Параметры:")
-    print(f"  email: {repr(email)}")
-    print(f"  name: {repr(name)}")
-    print(f"  patronymic: {repr(patronymic)}")
-    print(f"  surname: {repr(surname)}")
-    print(f"  phone: {repr(phone)}")
-    print(f"  pa: {repr(pa)}")
-    print(f"  request: {request is not None}")
-    print("=" * 60)
-
-    if not email:
-        print("❌ Ошибка: email не передан или пустой!")
-        print(f"   email = {repr(email)}")
-        return None
-
-    if not name:
-        print("❌ Ошибка: name не передан или пустой!")
-        return None
-
-    if not patronymic:
-        print("⚠️ Предупреждение: patronymic не передан, используем пустую строку")
-        patronymic = ""
-
-    try:
-        user = Open1.objects.get(email=email)
-        print(f"✅ Найден в Open1: {user.email}")
-
-        if request:
-            request.session['user_id'] = user.id
-            request.session['user_email'] = user.email
-            request.session['is_authenticated'] = True
-
-        return {
-            'found_in': 'open1',
-            'id': user.id,
-            'email': user.email,
-            'pa': user.pa
-        }
-    except Open1.DoesNotExist:
-        print("❌ Не найден в Open1")
-
-    try:
-        temp_user = Open3.objects.get(email=email)
-        print(f"✅ Найден в Open3: {temp_user.email}")
-
-        return {
-            'found_in': 'open3',
-            'id': temp_user.id,
-            'email': temp_user.email,
-            'name': temp_user.name,
-            'patronymic': temp_user.patronymic,
-            'surname': temp_user.surname,
-            'phone': temp_user.phone,
-            'pa': temp_user.pa
-        }
-    except Open3.DoesNotExist:
-        print("❌ Не найден в Open3")
-
-    try:
-        print(f"Создаем нового пользователя:")
-        print(f"   email: {email}")
-        print(f"   name: {name}")
-        print(f"   patronymic: {patronymic}")
-        print(f"   pa: {pa or ''}")
-
-        new_user = Open3.objects.create(
-            email=email,
-            name=name,
-            patronymic=patronymic or '',
-            pa=pa,
-            surname=surname,
-            phone=phone
-        )
-        new_user2 = Open1.objects.create(
-            email=email,
-            pa=pa
-        )
-        print(f"✅ Создан пользователь с ID: {new_user.id}")
-        print(f"✅ Создан пользователь с ID: {new_user2.id}")
-
-        return {
-            'found_in': 'created',
-            'id': new_user.id,
-            'email': new_user.email,
-            'name': new_user.name,
-            'patronymic': new_user.patronymic,
-            'surname': new_user.surname,
-            'phone': new_user.phone,
-            'pa': new_user.pa
-        }
-    except Exception as e:
-        print(f"❌ Ошибка при создании: {e}")
-        return None
-
-
-
-
-
-
+            return redirect('home')
+            
+        except Exception as e:
+            return render(request, 'blog/Вход_3.html', {'error': f'Ошибка: {str(e)}', 'role': role})
+    return render(request, 'blog/Вход_3.html', {'role': role})
 
 
 
 # ДЕКОРАТОР
-
 
 def login_required(view_func):
     def wrapper(request, *args, **kwargs):
@@ -327,7 +206,13 @@ CHAT_USER_AVATAR = static("images/1.png")
 
 
 def get_current_open1_user(request):
-    return Open1.objects.get(id=request.session["user_id"])
+    email = request.session.get('user_email')
+    if not email:
+        return None
+    try:
+        return Open1.objects.get(email=email)
+    except Open1.DoesNotExist:
+        return None
 
 
 def get_open3_map_by_emails(emails):
@@ -499,7 +384,7 @@ def get_chat_state_payload(current_user):
 
 
 def get_chat_picker_payload(current_user):
-    users = list(Open1.objects.exclude(id=current_user.id).order_by("email"))
+    users = list(Users.objects.exclude(id=current_user.id).order_by("email"))
     profile_map = get_open3_map_by_emails([user.email for user in users])
 
     return [
@@ -512,9 +397,6 @@ def get_chat_picker_payload(current_user):
         for user in users
     ]
 
-
-def get_unread_chat_count_for_user(current_user):
-    return get_chat_state_payload(current_user)["unreadCount"]
 
 
 def build_chat_response(current_user, **extra):
@@ -585,17 +467,24 @@ def add_attachments_to_message(message, uploaded_files):
 
 @login_required
 def index(request):
-    user = Open1.objects.get(email=request.session['user_email'])
+    user = get_current_open1_user(request)
     return render(request, 'blog/index.html', {'user': user})
 
 def open_2(request):
     user = request.session.get('user', {})
     return render(request, 'blog/Вход_2.html', {'user': user})
+    
 
 @login_required
 def home(request):
-    # 1. Фикс по email
-    user = Open1.objects.get(email=request.session['user_email'])
+    user = get_current_open1_user(request)
+
+    if not user:
+        email = request.session.get('user_email')
+        if email:
+            user, _ = Open1.objects.get_or_create(email=email)
+        else:
+            return redirect('open_1')
 
     # 2. Ранний код
     events = Event.objects.all() # все мероприятия
@@ -643,18 +532,21 @@ def profile(request):
     """Защищенная страница — только для авторизованных"""
     try:
         user = Open3.objects.get(email=request.session['user_email'])
-        return render(request, 'blog/ЛК.html', {'user': user})
+        role = request.session.get('role')
+        return render(request, 'blog/ЛК.html', {'user': user, 'role': role})
     except Open3.DoesNotExist:
         return redirect('home')
 
 @login_required
 def chat_page(request):
-    user = get_current_open1_user(request)
-    chat_state = get_chat_state_payload(user)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return redirect('home')
+    chat_state = get_chat_state_payload(current_user)
     context = {
         'chat_unread_count': chat_state["unreadCount"],
         'chat_bootstrap': chat_state["chats"],
-        'chat_picker_users': get_chat_picker_payload(user),
+        'chat_picker_users': get_chat_picker_payload(current_user),
     }
     return render(request, 'blog/chat.html', context)
 
@@ -662,47 +554,40 @@ def chat_page(request):
 @login_required
 def form_1(request, event_id=None):
     if event_id is None:
-        user = Open1.objects.get(email=request.session['user_email'])
+        user = get_current_open1_user(request)
         return render(request, 'blog/Форма_1.html', {'user': user})
 
     try:
         event = Event.objects.get(id=event_id)
+        role = request.session.get('role')
+        return render(request, 'blog/Форма_1.html', {'event': event, 'role': role})
     except Event.DoesNotExist:
         return redirect('home')
 
-    return render(request, 'blog/Форма_1.html', {'event': event})
+    
 
 @login_required
 def form_2(request):
     print("=== FORM_2 ВЫЗВАН ===")
     print("Метод:", request.method)
     print("POST данные:", request.POST)
-    user = Open3.objects.get(email=request.session['user_email'])
+    user = get_current_users_user(request)
+
+    if not user:
+        return redirect('home')
 
     if request.method == 'POST':
-        # Получаем данные из формы
-        event_name = request.POST.get('event_name')
-        event_phone = request.POST.get('event_phone')
-        event_email = request.POST.get('event_email')
-        fio = request.POST.get('fio')
-        field_of_work = request.POST.get('field_of_work')
-        organization_of_work = request.POST.get('organization_of_work')
-        event_description = request.POST.get('event_description')
-        event_image = request.FILES.get('event_image')
-
-
-        # Сохраняем в БД
         event = Event.objects.create(
-            user=user,
-            event_name=event_name,
-            event_phone=event_phone,
-            event_email=event_email,
-            fio=fio,
-            field_of_work=field_of_work,
-            organization_of_work=organization_of_work,
-            event_description=event_description,
-            language='russian',  # или можно передать из формы
-            image=event_image if event_image else None
+            user=user,                        
+            event_name=request.POST.get('event_name'),
+            event_phone=request.POST.get('event_phone'),
+            event_email=request.POST.get('event_email'),
+            fio=request.POST.get('fio'),
+            field_of_work=request.POST.get('field_of_work'),
+            organization_of_work=request.POST.get('organization_of_work'),
+            event_description=request.POST.get('event_description'),
+            language='russian',
+            image=request.FILES.get('event_image')
         )
 
         return redirect('home')  # или другую страницу
@@ -711,13 +596,13 @@ def form_2(request):
 
 @login_required
 def form_3(request, event_id):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return redirect('login')
+    user = get_current_users_user(request)
+    if not user:
+        return redirect('home')
 
     try:
         # event = Event.objects.get(id=event_id, user_id=user_id)
-        event = Event.objects.get(id=event_id)
+        event = Event.objects.get(id=event_id, user=user)
     except Event.DoesNotExist:
         return redirect('home')
 
@@ -742,7 +627,7 @@ def profile_test(request):
     target_email = request.GET.get('email')
     
     # 2. Получаем текущего авторизованного пользователя (для шапки сайта)
-    current_user = Open1.objects.get(email=request.session['user_email'])
+    current_user = get_current_open1_user(request)
 
     if target_email:
         # Если кликнули из рейтинга — ищем данные этого специалиста
@@ -771,8 +656,8 @@ def profile_test(request):
 @login_required
 def edit_profile(request):
     # Получаем профиль текущего пользователя
-    user = Open1.objects.get(id=request.session['user_id'])
-    profile = user.profile
+    user = get_current_open1_user(request)
+    profile = user.profile if hasattr(user, 'profile') else None
 
     if request.method == 'POST':
         form = ProfileForm(request.POST, instance=profile)
@@ -787,8 +672,8 @@ def edit_profile(request):
 
 @login_required
 def view_profile(request):
-    user = Open1.objects.get(id=request.session['user_id'])
-    profile = user.profile
+    user = get_current_open1_user(request)
+    profile = user.profile if hasattr(user, 'profile') else None
 
     return render(request, 'Форма_1.html', {
         'user': user,
@@ -801,14 +686,14 @@ def create_event(request):
     return form_2(request)
 
 
-
+@login_required
 def delete_event(request, event_id):
-    user_id = request.session.get('user_id')
-    if not user_id:
+    user = get_current_users_user(request)
+    if not user:
         return redirect('open_1')
 
     try:
-        event = Event.objects.get(id=event_id, user_id=user_id)
+        event = Event.objects.get(id=event_id, user=user)
         event.delete()
     except Event.DoesNotExist:
         pass
@@ -821,7 +706,9 @@ def delete_event(request, event_id):
 @login_required
 @require_POST
 def chat_open_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
 
@@ -841,7 +728,9 @@ def chat_open_api(request):
 @login_required
 @require_POST
 def chat_create_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     participant_ids = payload.get("participant_ids") or []
 
@@ -853,7 +742,7 @@ def chat_create_api(request):
     if not participant_ids:
         return JsonResponse({"ok": False, "error": "Выберите хотя бы одного участника."}, status=400)
 
-    selected_users = list(Open1.objects.filter(id__in=participant_ids).order_by("id"))
+    selected_users = list(Users.objects.filter(id__in=participant_ids).order_by("id"))
     if len(selected_users) != len(participant_ids):
         return JsonResponse({"ok": False, "error": "Некоторые участники не найдены."}, status=404)
 
@@ -887,7 +776,9 @@ def chat_create_api(request):
 @login_required
 @require_POST
 def chat_send_message_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     chat_id = request.POST.get("chat_id")
     text = (request.POST.get("text") or "").strip()
     uploaded_files = request.FILES.getlist("attachments")
@@ -930,7 +821,9 @@ def chat_send_message_api(request):
 @login_required
 @require_POST
 def chat_toggle_pin_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
 
@@ -950,7 +843,9 @@ def chat_toggle_pin_api(request):
 @login_required
 @require_POST
 def chat_rename_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
     title = (payload.get("title") or "").strip()
@@ -976,7 +871,9 @@ def chat_rename_api(request):
 @login_required
 @require_POST
 def chat_delete_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
 
@@ -1003,7 +900,9 @@ def chat_delete_api(request):
 @login_required
 @require_POST
 def chat_update_message_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     message_id = payload.get("message_id")
     text = (payload.get("text") or "").strip()
@@ -1038,7 +937,9 @@ def chat_update_message_api(request):
 @login_required
 @require_POST
 def chat_delete_message_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     message_id = payload.get("message_id")
 
@@ -1068,7 +969,9 @@ def chat_delete_message_api(request):
 @login_required
 @require_POST
 def chat_delete_api(request):
-    current_user = get_current_open1_user(request)
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
 
@@ -1110,6 +1013,56 @@ def chat_delete_api(request):
             chat.delete()
 
     return build_chat_response(current_user)
+
+def get_current_user(request):
+    user_id = request.session.get('user_id')
+    role = request.session.get('role')
+    if not user_id or not role:
+        return None
+    if role == 'mentor':
+        try:
+            return Mentors.objects.get(id=user_id)
+        except Mentors.DoesNotExist:
+            return None
+    elif role == 'intern':
+        try:
+            return Interns.objects.get(id=user_id)
+        except Interns.DoesNotExist:
+            return None
+    return None
+
+def get_current_open3_user(request):
+    email = request.session.get('user_email')
+    if not email:
+        return None
+    try:
+        return Open3.objects.get(email=email)
+    except Open3.DoesNotExist:
+        return None
+
+def ensure_open1_and_open3(email, name="", patronymic="", surname="", phone="", role="intern"):
+    """Создаёт/получает Open1, Open3, Users для совместимости."""
+    open1, _ = Open1.objects.get_or_create(email=email, defaults={'pa': ''})
+    open3, _ = Open3.objects.get_or_create(
+        email=email,
+        defaults={
+            'name': name,
+            'patronymic': patronymic,
+            'surname': surname,
+            'phone': phone,
+            'pa': ''
+        }
+    )
+    Users.objects.get_or_create(email=email, defaults={'role': role})
+    return open1, open3
+
+def get_current_users_user(request):
+    email = request.session.get('user_email')
+    if not email:
+        return None
+    role = request.session.get('role', 'intern')
+    user, _ = Users.objects.get_or_create(email=email, defaults={'role': role})
+    return user
 
 
 def logout_view(request):
