@@ -449,12 +449,16 @@
             <div class="content-wrapper">
                 {% csrf_token %}
                 <div class="right-section">
-                    <a href="{% url 'form_3' event.id %}" class="cta-button"><b>Редактировать мероприятие</b></a>
-                    <a href="{% url 'delete_event' event.id %}" class="cta-button"
-                        onclick="return confirm('Вы уверены, что хотите удалить это мероприятие?')"
-                        style="background: Crimson;">
-                       <b>Удалить мероприятие</b>
-                    </a>
+                    {% if role == 'mentor' %}
+                        <a href="{% url 'form_3' event.id %}" class="cta-button"><b>Редактировать мероприятие</b></a>
+                        <a href="{% url 'delete_event' event.id %}" class="cta-button"
+                            onclick="return confirm('Вы уверены, что хотите удалить это мероприятие?')"
+                            style="background: Crimson;">
+                           <b>Удалить мероприятие</b>
+                        </a>
+                    {% else %}
+                        <button class="cta-button" onclick="navigateTo('application')">Подать заявку</button>
+                    {% endif %}
                 </div>
 
                 <div class="form-control">
