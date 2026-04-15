@@ -9,6 +9,40 @@ from django.db import models
 from django.utils import timezone
 
 
+class Users(models.Model):
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = 'users'   # новая таблица
+
+class Emails_workers(models.Model):
+    email = models.EmailField(unique=True)
+
+    class Meta:
+        db_table = 'emails_workers'
+
+class Mentors(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100)
+    phone = models.CharField(max_length=12)
+    password = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'mentors'
+
+class Interns(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100)
+    patronymic = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100)
+    phone = models.CharField(max_length=12)
+    password = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'interns'
 
 class Open1(models.Model):
     email = models.EmailField(unique=True)
@@ -46,7 +80,7 @@ class Chat(models.Model):
     title = models.CharField(max_length=255)
     subtitle = models.CharField(max_length=255, blank=True, default="")
     created_by = models.ForeignKey(
-        Open1,
+        Users,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -62,7 +96,7 @@ class Chat(models.Model):
 
 class ChatParticipant(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="participants")
-    user = models.ForeignKey(Open1, on_delete=models.CASCADE, related_name="chat_participants")
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="chat_participants")
     joined_at = models.DateTimeField(auto_now_add=True)
     last_read_at = models.DateTimeField(null=True, blank=True)
     is_pinned = models.BooleanField(default=False)
@@ -84,7 +118,7 @@ class ChatMessage(models.Model):
 
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(
-        Open1,
+        Users,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -130,7 +164,7 @@ class ChatAttachment(models.Model):
 
 
 class UserData(models.Model):
-    user = models.OneToOneField(Open3, on_delete=models.CASCADE, related_name='extra_data')
+    user = models.OneToOneField(Users, on_delete=models.CASCADE, related_name='extra_data')
 
     event_phone = models.CharField(max_length=12)
     fio = models.CharField(max_length=100)
@@ -150,7 +184,7 @@ class UserData(models.Model):
 
 
 class Event(models.Model):
-    user = models.ForeignKey(Open3, on_delete=models.CASCADE, related_name='events')
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='events')
 
     # Данные из формы
     event_name = models.CharField(max_length=200, verbose_name='Название мероприятия')
@@ -174,58 +208,6 @@ class Event(models.Model):
 
     class Meta:
         db_table = 'events'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Users(models.Model):
-    email = models.EmailField(unique=True)
-    role = models.CharField(max_length=20)
-
-    class Meta:
-        db_table = 'users'   # новая таблица
-
-class Emails_workers(models.Model):
-    email = models.EmailField(unique=True)
-
-    class Meta:
-        db_table = 'emails_workers'
-
-class Mentors(models.Model):
-    email = models.EmailField(unique=True)
-    name = models.CharField(max_length=100)
-    patronymic = models.CharField(max_length=100, blank=True, null=True)
-    surname = models.CharField(max_length=100)
-    phone = models.CharField(max_length=12)
-    password = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'mentors'
-
-class Interns(models.Model):
-    email = models.EmailField(unique=True)
-    name = models.CharField(max_length=100)
-    patronymic = models.CharField(max_length=100, blank=True, null=True)
-    surname = models.CharField(max_length=100)
-    phone = models.CharField(max_length=12)
-    password = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'interns'
-
-
-
 
 
 
