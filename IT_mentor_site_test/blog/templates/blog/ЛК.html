@@ -867,8 +867,10 @@
                        <div class="profile-info">
                            <div class="info-label">{{ user.email }}</div>
                            <div class="info-label">{{ user.phone }}</div>
-                           <div class="info-label">Институт</div>
-                           <div class="info-label">Курс обучения</div>
+                           {% if role == 'intern' %}
+                                <div class="info-label">Институт</div>
+                                <div class="info-label">Курс обучения</div>
+                           {% endif %}
                        </div>
                        <div class="user-id">User ID: {{ user.id }}</div>
                        <div class="profile-logout">
