@@ -77,8 +77,20 @@ def chat_attachment_upload_to(instance, filename):
 
 
 class Chat(models.Model):
+    CHAT_TYPE_DIRECT = "direct"
+    CHAT_TYPE_GROUP = "group"
+    CHAT_TYPE_CHOICES = [
+        (CHAT_TYPE_DIRECT, "Личные сообщения"),
+        (CHAT_TYPE_GROUP, "Группа"),
+    ]
+
     title = models.CharField(max_length=255)
     subtitle = models.CharField(max_length=255, blank=True, default="")
+    chat_type = models.CharField(
+        max_length=20,
+        choices=CHAT_TYPE_CHOICES,
+        default=CHAT_TYPE_DIRECT,
+    )
     created_by = models.ForeignKey(
         Users,
         on_delete=models.SET_NULL,
@@ -126,6 +138,7 @@ class ChatMessage(models.Model):
     )
     message_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_USER)
     text = models.TextField(blank=True, default="")
+    forwarded_from_name = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     edited_at = models.DateTimeField(null=True, blank=True)
