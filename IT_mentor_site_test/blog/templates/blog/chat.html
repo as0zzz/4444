@@ -3,6 +3,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Чат</title>
     <style>
         * {
@@ -20,25 +21,26 @@
         }
 
         html, body {
-            min-height: 100%;
+            height: 100%;
         }
 
         body {
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
             font-family: 'Inter', -apple-system, Roboto, sans-serif;
             background:
                 radial-gradient(circle at top left, rgba(222, 115, 88, 0.10), transparent 28%),
                 radial-gradient(circle at bottom right, rgba(110, 145, 255, 0.18), transparent 34%),
                 #f7f7f8;
             color: var(--text-dark);
+            overflow: hidden;
         }
 
         header {
             background-color: white;
-            position: sticky;
-            top: 0;
+            position: relative;
             z-index: 40;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
@@ -139,31 +141,6 @@
             display: none !important;
         }
 
-        .mobile-search {
-            width: 100%;
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            padding: 0 1rem 1rem;
-        }
-
-        @media (min-width: 768px) {
-            .mobile-search {
-                display: none;
-            }
-        }
-
-        .mobile-search input {
-            flex: 1;
-            font-size: 1rem;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid var(--accent);
-            padding-bottom: 0.5rem;
-            outline: none;
-            color: var(--text-dark);
-        }
-
         .chat-textarea-wrap {
             min-width: 0;
             min-height: 38px;
@@ -174,17 +151,23 @@
         }
         .chat-page {
             flex: 1;
-            max-width: 1400px;
-            margin: 2rem auto 0;
-            padding: 0.5rem 0.5rem 2rem;
             width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 0.75rem 0.75rem 1rem;
+            height: 100%;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
         }
 
         .chat-shell {
+            flex: 1;
             display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 1.25rem;
+            grid-template-columns: clamp(280px, 22vw, 340px) minmax(0, 1fr);
+            gap: 0.85rem;
             align-items: stretch;
+            height: 100%;
             min-height: 0;
         }
 
@@ -202,15 +185,15 @@
             flex-direction: column;
             overflow: hidden;
             background: linear-gradient(180deg, #ffffff 0%, #fff7f4 100%);
-            padding: 1rem;
-            height: clamp(620px, calc(100vh - 240px), 760px);
+            padding: 0;
+            height: 100%;
         }
 
         .chat-panel {
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: clamp(620px, calc(100vh - 240px), 760px);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            height: 100%;
             background:
                 radial-gradient(circle at 20% 20%, rgba(255,255,255,0.75), transparent 28%),
                 radial-gradient(circle at 80% 20%, rgba(173, 209, 255, 0.35), transparent 30%),
@@ -224,13 +207,15 @@
             bottom: calc(100% + 12px);
             transform: translateX(-50%);
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 999px;
             padding: 0.7rem 1rem;
+            max-width: calc(100% - 2.5rem);
             background: rgba(255, 255, 255, 0.94);
             color: #6B7280;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
             font-size: 0.9rem;
             font-weight: 500;
+            white-space: nowrap;
             pointer-events: auto;
             cursor: pointer;
             z-index: 20;
@@ -246,7 +231,9 @@
         }
 
         .chat-sidebar-top {
-            margin-bottom: 1rem;
+            padding: 1rem 1rem 0.85rem;
+            border-bottom: 1px solid rgba(209, 213, 219, 0.7);
+            flex-shrink: 0;
         }
 
         .chat-sidebar-head {
@@ -272,6 +259,10 @@
             cursor: pointer;
             box-shadow: 0 8px 18px rgba(222, 115, 88, 0.22);
             transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .chat-create-btn[hidden] {
+            display: none !important;
         }
 
         .chat-create-btn:hover {
@@ -309,13 +300,14 @@
         .chat-list {
             display: flex;
             flex-direction: column;
-            gap: 0.85rem;
-            max-height: 700px;
+            gap: 0.35rem;
             overflow-x: hidden;
             overflow-y: auto;
-            padding: 6px 6px 8px;
+            padding: 0.5rem 0.5rem 0.9rem;
             flex: 1;
             min-height: 0;
+            border-bottom-left-radius: 28px;
+            border-bottom-right-radius: 28px;
             scrollbar-width: none;
             -ms-overflow-style: none;
             scrollbar-color: var(--accent) rgba(222, 115, 88, 0.12);
@@ -352,7 +344,7 @@
             display: grid;
             grid-template-columns: 56px 1fr auto;
             gap: 0.85rem;
-            align-items: center;
+            align-items: start;
             text-align: left;
             cursor: pointer;
             transition: 0.2s ease;
@@ -374,16 +366,6 @@
             background: #fff1ec;
             border-color: rgba(222, 115, 88, 0.45);
             box-shadow: inset 4px 0 0 var(--accent);
-        }
-
-        .chat-item.pinned .chat-meta-title::after {
-            content: "• Закреплён";
-            display: inline-block;
-            margin-left: 0.45rem;
-            color: #DE7358;
-            font-size: 0.78rem;
-            font-weight: 600;
-            vertical-align: middle;
         }
 
         .chat-avatar {
@@ -435,38 +417,109 @@
             justify-content: center;
             font-size: 0.75rem;
             font-weight: 700;
+            align-self: center;
         }
 
         .chat-panel-header {
             display: flex;
             align-items: center;
             gap: 0.9rem;
-            padding: 1rem 1.25rem;
+            padding: 1rem 1.35rem;
             background: #ffffff;
             border-bottom: 1px solid rgba(209, 213, 219, 0.7);
             background-clip: padding-box;
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
+        .chat-panel-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-shrink: 0;
+        }
+
+        .chat-panel-action-btn {
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 50%;
+            background: #F3F4F6;
+            color: #4B5563;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .chat-panel-action-btn:hover {
+            background: #DE7358;
+            color: #ffffff;
+        }
+
+        .chat-back-btn {
+            display: none;
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 50%;
+            background: #F3F4F6;
+            color: #4B5563;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .chat-back-btn:hover {
+            background: #DE7358;
+            color: #ffffff;
         }
 
         .chat-panel-title {
             display: flex;
             flex-direction: column;
             gap: 0.15rem;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .chat-panel-title strong {
             font-size: 1.1rem;
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .chat-panel-title span {
             font-size: 0.84rem;
             color: #666;
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-panel-header.is-searching .chat-panel-title,
+        .chat-panel-header.is-searching .chat-panel-actions {
+            display: none;
+        }
+
+        .chat-panel-header.is-searching .chat-message-search {
+            display: flex;
         }
 
         .chat-messages {
             flex: 1 1 auto;
             min-height: 0;
             overflow: auto;
-            padding: 1.6rem;
+            padding: 1rem 1.25rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -477,6 +530,7 @@
         .message-row {
             display: flex;
             align-items: flex-start;
+            width: 100%;
         }
 
         .message-row.outgoing {
@@ -493,7 +547,7 @@
             flex-direction: column;
             align-items: flex-start;
             width: fit-content;
-            max-width: min(52%, 360px);
+            max-width: min(68%, 460px);
             padding: 0.85rem 1rem 0.8rem;
             border-radius: 0.5rem;
             background: #ffffff;
@@ -557,6 +611,24 @@
         .message-text {
             display: block;
             font-size: 0.98rem;
+        }
+
+        .message-sender {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            line-height: 1.3;
+            color: #6B7280;
+        }
+
+        .message-forwarded {
+            display: block;
+            margin-bottom: 0.35rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1.3;
+            color: #C4644A;
         }
 
         .message-attachments {
@@ -652,16 +724,86 @@
         .chat-input-wrap {
             position: relative;
             flex-shrink: 0;
-            padding: 1rem 1.5rem 1.5rem;
+            padding: 0.9rem 1.25rem 1.15rem;
             background: #ffffff;
             border-top: 1px solid rgba(209, 213, 219, 0.7);
             background-clip: padding-box;
+            border-bottom-left-radius: 28px;
+            border-bottom-right-radius: 28px;
+            overflow: visible;
         }
         .chat-composer {
             position: relative;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+        }
+
+        .chat-message-search {
+            display: none;
+            align-items: center;
+            gap: 0.7rem;
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: auto;
+        }
+
+        .chat-message-search.show {
+            display: flex;
+        }
+
+        .chat-message-search-field {
+            flex: 1 1 auto;
+            min-width: 0;
+            border-radius: 18px;
+        }
+
+        .chat-message-search-field input {
+            min-width: 0;
+        }
+
+        .chat-message-search-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            flex-shrink: 0;
+        }
+
+        .chat-message-nav-btn {
+            border: none;
+            background: transparent;
+            color: #6B7280;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .chat-message-nav-btn:hover {
+            color: #DE7358;
+        }
+
+        .chat-message-nav-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .message-bubble.message-search-match {
+            box-shadow: 0 0 0 2px rgba(222, 115, 88, 0.5), 0 8px 18px rgba(21, 34, 56, 0.08);
+        }
+
+        .message-bubble.message-search-match-active {
+            box-shadow: 0 0 0 2px rgba(222, 115, 88, 0.9), 0 12px 22px rgba(21, 34, 56, 0.12);
+        }
+
+        .chat-editing-banner,
+        .chat-attachments,
+        .chat-input {
+            width: 100%;
         }
 
         .chat-editing-banner {
@@ -891,6 +1033,19 @@
             border-color: #DE7358;
         }
 
+        .chat-modal-empty {
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            border: 1px dashed #D1D5DB;
+            border-radius: 18px;
+            color: #6B7280;
+            text-align: center;
+            line-height: 1.45;
+        }
+
         .chat-modal-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -958,6 +1113,10 @@
             color: #1F2937;
             font-size: 0.95rem;
             font-weight: 500;
+        }
+
+        .chat-context-action[hidden] {
+            display: none !important;
         }
 
         .chat-context-action:hover {
@@ -1287,6 +1446,13 @@
             border-radius: 16px;
             padding: 0.75rem;
         }
+        .chat-compose-row {
+            position: relative;
+            display: block;
+            width: 100%;
+            padding-right: 0;
+        }
+
         .chat-input {
             position: relative;
             display: grid;
@@ -1298,6 +1464,10 @@
             border-radius: 28px;
             padding: 0.7rem 0.85rem;
             min-height: 64px;
+            min-width: 0;
+            flex: 1 1 auto;
+            width: 100%;
+            overflow: visible;
         }
 
         .chat-input textarea {
@@ -1402,6 +1572,17 @@
             color: #ffffff;
         }
 
+        .chat-send-btn:disabled,
+        .chat-plus-btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .chat-send-btn:disabled:hover,
+        .chat-plus-btn:disabled:hover {
+            background: #F3F4F6;
+            color: #4B5563;
+        }
         .chat-plus-wrap {
             position: relative;
             align-self: end;
@@ -1473,13 +1654,13 @@
 
         footer {
             background-color: white;
-            margin-top: auto;
-            padding: 2rem 1rem;
+            padding: 0.9rem 1rem;
+            flex-shrink: 0;
         }
 
         @media (min-width: 768px) {
             footer {
-                padding: 2rem;
+                padding: 1rem 2rem;
             }
         }
 
@@ -1499,20 +1680,34 @@
         }
 
         @media (max-width: 980px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                overflow: auto;
+            }
+
             .chat-shell {
                 grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .chat-page {
+                height: auto;
+                overflow: visible;
             }
 
             .chat-sidebar,
             .chat-panel {
                 height: auto;
-                min-height: 640px;
+                min-height: 520px;
             }
         }
 
         @media (max-width: 640px) {
             .chat-page {
-                padding: 0 0.75rem 1.5rem;
+                padding: 0.5rem 0.5rem 1rem;
             }
 
             .chat-panel-header,
@@ -1520,6 +1715,16 @@
             .chat-input-wrap {
                 padding-left: 1rem;
                 padding-right: 1rem;
+            }
+
+            .chat-sidebar-top {
+                padding-left: 0.85rem;
+                padding-right: 0.85rem;
+            }
+
+            .chat-list {
+                padding-left: 0.35rem;
+                padding-right: 0.35rem;
             }
 
             .message-bubble {
@@ -1530,6 +1735,115 @@
                 padding: 0.55rem 0.85rem;
                 font-size: 0.8rem;
             }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                height: 100dvh;
+                min-height: 100vh;
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                overflow: hidden;
+            }
+
+            .chat-page {
+                padding: 0.5rem;
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .chat-shell {
+                display: block;
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .chat-sidebar,
+            .chat-panel {
+                width: 100%;
+                height: 100%;
+                min-height: 0;
+                border-radius: 24px;
+            }
+
+            .chat-shell:not(.mobile-chat-open) .chat-panel {
+                display: none;
+            }
+
+            .chat-shell:not(.mobile-chat-open) .chat-sidebar {
+                display: flex;
+            }
+
+            .chat-shell.mobile-chat-open .chat-sidebar {
+                display: none;
+            }
+
+            .chat-shell.mobile-chat-open .chat-panel {
+                display: grid;
+            }
+
+            .chat-sidebar {
+                overflow: hidden;
+            }
+
+            .chat-list {
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow-y: auto;
+                padding-bottom: 1rem;
+                border-bottom-left-radius: 24px;
+                border-bottom-right-radius: 24px;
+            }
+
+            .chat-panel {
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                overflow: hidden;
+            }
+
+            .chat-panel-header {
+                gap: 0.65rem;
+            }
+
+            .chat-panel-header .chat-avatar {
+                width: 48px;
+                height: 48px;
+            }
+
+            .chat-panel-title strong {
+                font-size: 1rem;
+            }
+
+            .chat-input-wrap {
+                border-bottom-left-radius: 24px;
+                border-bottom-right-radius: 24px;
+            }
+
+            .chat-messages {
+                min-height: 0;
+                overflow-y: auto;
+            }
+
+            .chat-input-wrap {
+                flex-shrink: 0;
+            }
+
+            .chat-back-btn {
+                display: inline-flex;
+            }
+
+            .chat-panel-title {
+                min-width: 0;
+            }
+
+            .chat-panel-title strong,
+            .chat-panel-title span {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
         }
     </style>
 </head>
@@ -1547,23 +1861,16 @@
             </div>
         </div>
 
-        <div class="mobile-search">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input type="text" placeholder="Поиск..." id="searchMobile" autocomplete="off" spellcheck="false" maxlength="100">
-        </div>
     </header>
 
     <main class="chat-page">
-        <div class="chat-shell">
-            <aside class="chat-sidebar">
+        <div class="chat-shell" id="chatShell">
+            <aside class="chat-sidebar" id="chatSidebar">
                 <div class="chat-sidebar-top">
                     <div class="chat-sidebar-head">
                         <div class="chat-sidebar-title">Чаты</div>
 
-                        <button type="button" class="chat-create-btn" id="openCreateChatModal" aria-label="Создать чат">
+                        <button type="button" class="chat-create-btn" id="openCreateChatModal" aria-label="Создать чат" hidden>
                             +
                         </button>
                     </div>
@@ -1588,14 +1895,69 @@
                 <div class="chat-list" id="chatList"></div>
             </aside>
 
-            <section class="chat-panel">
+            <section class="chat-panel" id="chatPanel">
                 <div class="chat-panel-header">
+                    <button type="button" class="chat-back-btn" id="mobileBackToListBtn" aria-label="Вернуться к списку чатов">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 18L9 12L15 6"></path>
+                        </svg>
+                    </button>
                     <div class="chat-avatar">
                         <img id="panelAvatar" src="{% static 'images/1.png' %}" alt="Аватар">
                     </div>
                     <div class="chat-panel-title">
                         <strong id="panelTitle">Нет активного чата</strong>
                         <span id="panelStatus">Создайте чат или выберите существующий</span>
+                    </div>
+
+                    <div class="chat-message-search" id="chatMessageSearchWrap" hidden>
+                        <label class="chat-list-search chat-message-search-field">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+
+                            <input type="text" id="chatMessageSearchInput" placeholder="Поиск по сообщениям...">
+                        </label>
+
+                        <div class="chat-message-search-nav">
+                            <button type="button" class="chat-message-nav-btn" id="chatMessageSearchPrevBtn" aria-label="Предыдущее сообщение">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 15L12 9L6 15"></path>
+                                </svg>
+                            </button>
+
+                            <button type="button" class="chat-message-nav-btn" id="chatMessageSearchNextBtn" aria-label="Следующее сообщение">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9L12 15L18 9"></path>
+                                </svg>
+                            </button>
+
+                            <button type="button" class="chat-message-nav-btn" id="chatMessageSearchCloseBtn" aria-label="Закрыть поиск">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                                    <path d="M6 6L18 18"></path>
+                                    <path d="M18 6L6 18"></path>
+                                </svg>
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <div class="chat-panel-actions">
+                        <button type="button" class="chat-panel-action-btn" id="panelSearchToggleBtn" aria-label="Поиск по сообщениям">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <path d="m20 20-3.5-3.5"></path>
+                            </svg>
+                        </button>
+
+                        <button type="button" class="chat-panel-action-btn" id="chatHeaderMenuToggle" aria-label="Действия с чатом">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -1620,6 +1982,7 @@
                         </div>
 
                         <div class="chat-attachments" id="chatAttachments"></div>
+                        <div class="chat-compose-row">
                         <div class="chat-input" id="chatInputBox">
                             <div class="chat-dropzone" id="chatDropzone">
                                 Прикрепить к чату
@@ -1652,6 +2015,7 @@
                                 </svg>
                             </button>
                         </div>
+                        </div>
                     </div>
                 </form>
             </section>
@@ -1662,8 +2026,8 @@
         <div class="chat-modal">
             <div class="chat-modal-header">
                 <div>
-                    <h2 class="chat-modal-title">Новый чат</h2>
-                    <p class="chat-modal-subtitle">Выберите стажёров, которых хотите добавить в чат</p>
+                    <h2 class="chat-modal-title" id="chatModalTitle">Новый чат</h2>
+                    <p class="chat-modal-subtitle" id="chatModalSubtitle">Выберите стажёров, которых хотите добавить в чат</p>
                 </div>
 
                 <button type="button" class="chat-modal-close" id="closeCreateChatModal" aria-label="Закрыть">
@@ -1685,6 +2049,49 @@
         </div>
     </div>
 
+    <div class="chat-context-menu" id="chatHeaderMenu">
+        <button type="button" class="chat-context-action" id="chatHeaderTogglePinAction">
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 200 200" class="is-filled">
+                    <path d="M176.15,99.94a9.67,9.67,0,0,0-14,0l-51.5,51a41,41,0,0,1-58-58l48.5-48.5c10.5-10.5,28-10.5,39,0,8.5,8.5,8.5,22.5,0,31.5l-52.5,52c-3.5,3.5-9,3.5-12,0-3.5-3.5-3.5-9,0-12l51-51a9.9,9.9,0,0,0-14-14l-51,51c-11,11-11,29,0,40.5,11,11,29,11,40.5,0l52.5-52.5a42,42,0,0,0,0-59.5,47.38,47.38,0,0,0-67,0l-48.5,48.5a61.16,61.16,0,0,0,86.5,86.5l51-51A12,12,0,0,0,176.15,99.94Z"/>
+                </svg>
+            </span>
+            <span id="chatHeaderTogglePinLabel">Закрепить</span>
+        </button>
+
+        <button type="button" class="chat-context-action" id="chatHeaderRenameAction" hidden>
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 28 28" class="is-filled">
+                    <path d="M11.75 2C11.3358 2 11 2.33579 11 2.75C11 3.16421 11.3358 3.5 11.75 3.5H13.25V24.5H11.75C11.3358 24.5 11 24.8358 11 25.25C11 25.6642 11.3358 26 11.75 26H16.25C16.6642 26 17 25.6642 17 25.25C17 24.8358 16.6642 24.5 16.25 24.5H14.75V3.5H16.25C16.6642 3.5 17 3.16421 17 2.75C17 2.33579 16.6642 2 16.25 2H11.75Z"/>
+                    <path d="M6.25 6.01959H12.25V22.0196H6.25C4.45507 22.0196 3 20.5645 3 18.7696V9.26959C3 7.47467 4.45507 6.01959 6.25 6.01959Z"/>
+                    <path d="M21.75 22.0196H15.75V6.01959H21.75C23.5449 6.01959 25 7.47467 25 9.26959V18.7696C25 20.5645 23.5449 22.0196 21.75 22.0196Z"/>
+                </svg>
+            </span>
+            <span>Переименовать</span>
+        </button>
+
+        <button type="button" class="chat-context-action" id="chatHeaderAddParticipantAction" hidden>
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M19 8v6"></path>
+                    <path d="M16 11h6"></path>
+                </svg>
+            </span>
+            <span>Добавить в чат</span>
+        </button>
+
+        <button type="button" class="chat-context-action danger" id="chatHeaderDeleteAction">
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024" class="is-filled">
+                    <path d="M864 256H736v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80H160c-17.7 0-32 14.3-32 32v32c0 4.4 3.6 8 8 8h60.4l24.7 523c1.6 34.1 29.8 61 63.9 61h454c34.2 0 62.3-26.8 63.9-61l24.7-523H888c4.4 0 8-3.6 8-8v-32c0-17.7-14.3-32-32-32zm-200 0H360v-72h304v72z"/>
+                </svg>
+            </span>
+            <span>Удалить</span>
+        </button>
+    </div>
+
     <div class="chat-context-menu" id="chatContextMenu">
         <button type="button" class="chat-context-action" id="togglePinChatAction">
             <span class="chat-context-icon" aria-hidden="true">
@@ -1695,7 +2102,7 @@
             <span id="togglePinChatLabel">Закрепить</span>
         </button>
 
-        <button type="button" class="chat-context-action" id="renameChatAction">
+        <button type="button" class="chat-context-action" id="renameChatAction" hidden>
             <span class="chat-context-icon" aria-hidden="true">
                 <svg viewBox="0 0 28 28" class="is-filled">
                     <path d="M11.75 2C11.3358 2 11 2.33579 11 2.75C11 3.16421 11.3358 3.5 11.75 3.5H13.25V24.5H11.75C11.3358 24.5 11 24.8358 11 25.25C11 25.6642 11.3358 26 11.75 26H16.25C16.6642 26 17 25.6642 17 25.25C17 24.8358 16.6642 24.5 16.25 24.5H14.75V3.5H16.25C16.6642 3.5 17 3.16421 17 2.75C17 2.33579 16.6642 2 16.25 2H11.75Z"/>
@@ -1704,6 +2111,18 @@
                 </svg>
             </span>
             <span>Переименовать</span>
+        </button>
+
+        <button type="button" class="chat-context-action" id="addParticipantChatAction" hidden>
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M19 8v6"></path>
+                    <path d="M16 11h6"></path>
+                </svg>
+            </span>
+            <span>Добавить в чат</span>
         </button>
 
         <button type="button" class="chat-context-action danger" id="deleteChatAction">
@@ -1819,6 +2238,18 @@
             <span>Скопировать</span>
         </button>
 
+        <button type="button" class="chat-context-action" id="shareMessageAction" hidden>
+            <span class="chat-context-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 9l7-7"></path>
+                    <path d="M10 14 3 21"></path>
+                    <path d="M21 3 14 10"></path>
+                    <path d="M3 21l3.5-10.5L21 3 13.5 17.5z"></path>
+                </svg>
+            </span>
+            <span>Поделиться</span>
+        </button>
+
         <button type="button" class="chat-context-action danger" id="deleteMessageAction">
             <span class="chat-context-icon" aria-hidden="true">
                 <svg viewBox="0 0 1024 1024" class="is-filled">
@@ -1852,6 +2283,29 @@
         </div>
     </div>
 
+    <div class="chat-modal-overlay" id="forwardMessageModal">
+        <div class="chat-modal">
+            <div class="chat-modal-header">
+                <div>
+                    <h2 class="chat-modal-title">Поделиться сообщением</h2>
+                    <p class="chat-modal-subtitle" id="forwardMessageSubtitle">Выберите чат, куда хотите переслать сообщение</p>
+                </div>
+
+                <button type="button" class="chat-modal-close" id="closeForwardMessageModal" aria-label="Закрыть">
+                    ×
+                </button>
+            </div>
+
+            <div class="chat-modal-list" id="forwardChatList"></div>
+
+            <div class="chat-modal-actions">
+                <button type="button" class="chat-modal-cancel" id="cancelForwardMessageModal">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <footer>
         <div class="footer-content">
@@ -1861,6 +2315,7 @@
 
     {{ chat_bootstrap|json_script:"chat-bootstrap-data" }}
     {{ chat_picker_users|json_script:"chat-picker-users-data" }}
+    {{ chat_current_user|json_script:"chat-current-user-data" }}
 
     <script>
         // Default data
@@ -1870,14 +2325,19 @@
         const TRAINEES = JSON.parse(
             document.getElementById("chat-picker-users-data").textContent || "[]"
         );
+        const CURRENT_CHAT_USER = JSON.parse(
+            document.getElementById("chat-current-user-data").textContent || "{}"
+        );
         const MAX_MESSAGE_ATTACHMENTS = 10;
         const CHAT_API = {
             open: "/chat/api/open/",
             create: "/chat/api/create/",
+            addParticipants: "/chat/api/add-participants/",
             send: "/chat/api/send/",
             togglePin: "/chat/api/toggle-pin/",
             rename: "/chat/api/rename/",
             delete: "/chat/api/delete/",
+            messageForward: "/chat/api/message/forward/",
             messageUpdate: "/chat/api/message/update/",
             messageDelete: "/chat/api/message/delete/",
         };
@@ -1964,10 +2424,13 @@
                     sentAt: message.sentAt || parseLegacySentAt(message.time)
                 }),
                 id: Number(message.id) || null,
+                isForwarded: Boolean(message.isForwarded),
+                forwardedFromName: message.forwardedFromName || "",
                 edited: Boolean(message.edited),
                 editedAt: message.editedAt || null,
                 deleted: Boolean(message.deleted),
                 read: Boolean(message.read),
+                senderDisplayName: message.senderDisplayName || "",
                 attachments: Array.isArray(message.attachments)
                     ? message.attachments.map((attachment) => ({
                         id: Number(attachment.id) || null,
@@ -1975,7 +2438,10 @@
                         url: attachment.url || "",
                         contentType: attachment.contentType || "",
                         size: Number(attachment.size) || 0,
+                        transcriptText: attachment.transcriptText || "",
                         isImage: Boolean(attachment.isImage),
+                        isAudio: Boolean(attachment.isAudio)
+                            || String(attachment.contentType || "").toLowerCase().startsWith("audio/"),
                     }))
                     : [],
             };
@@ -1991,6 +2457,15 @@
                 pinned: Boolean(chat.pinned),
                 hidden: Boolean(chat.hidden),
                 avatar: chat.avatar || "{% static 'images/1.png' %}",
+                participantCount: Math.max(0, Number(chat.participantCount) || 0),
+                participantIds: Array.isArray(chat.participantIds)
+                    ? chat.participantIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+                    : [],
+                isDirect: Boolean(chat.isDirect),
+                isGroup: Boolean(chat.isGroup),
+                showSenderNames: Boolean(chat.showSenderNames),
+                canManage: Boolean(chat.canManage),
+                canAddMembers: Boolean(chat.canAddMembers),
                 messages: Array.isArray(chat.messages) ? chat.messages.map(normalizeMessage) : []
             };
         }
@@ -2129,10 +2604,25 @@
         let contextChatIndex = null;
         let contextMessageId = null;
         let editingMessageId = null;
+        let forwardingMessageId = null;
+        let chatPickerMode = "create";
+        let targetChatIdForParticipantAdd = null;
 
         // DOM references
         const chatForm = document.getElementById("chatForm");
         const chatList = document.getElementById("chatList");
+        const chatShell = document.getElementById("chatShell");
+        const mobileBackToListBtn = document.getElementById("mobileBackToListBtn");
+        const chatPanelHeader = document.querySelector(".chat-panel-header");
+        const chatPanelTitle = document.querySelector(".chat-panel-title");
+        const chatPanelActions = document.querySelector(".chat-panel-actions");
+        const panelSearchToggleBtn = document.getElementById("panelSearchToggleBtn");
+        const chatHeaderMenuToggle = document.getElementById("chatHeaderMenuToggle");
+        const chatMessageSearchWrap = document.getElementById("chatMessageSearchWrap");
+        const chatMessageSearchInput = document.getElementById("chatMessageSearchInput");
+        const chatMessageSearchPrevBtn = document.getElementById("chatMessageSearchPrevBtn");
+        const chatMessageSearchNextBtn = document.getElementById("chatMessageSearchNextBtn");
+        const chatMessageSearchCloseBtn = document.getElementById("chatMessageSearchCloseBtn");
         const panelAvatar = document.getElementById("panelAvatar");
         const panelTitle = document.getElementById("panelTitle");
         const panelStatus = document.getElementById("panelStatus");
@@ -2141,6 +2631,7 @@
         const chatSearchClearBtn = document.getElementById("chatSearchClearBtn");
         const chatMessageInput = document.getElementById("chatMessageInput");
         const chatMessageSizer = document.getElementById("chatMessageSizer");
+        const chatSendBtn = chatForm.querySelector(".chat-send-btn");
         const chatEditingBanner = document.getElementById("chatEditingBanner");
         const chatEditingBannerMessage = document.getElementById("chatEditingBannerMessage");
         const cancelMessageEditing = document.getElementById("cancelMessageEditing");
@@ -2156,11 +2647,20 @@
         const closeCreateChatModal = document.getElementById("closeCreateChatModal");
         const cancelCreateChatModal = document.getElementById("cancelCreateChatModal");
         const submitCreateChat = document.getElementById("submitCreateChat");
+        const chatModalTitle = document.getElementById("chatModalTitle");
+        const chatModalSubtitle = document.getElementById("chatModalSubtitle");
         const traineeList = document.getElementById("traineeList");
+        const chatHeaderMenu = document.getElementById("chatHeaderMenu");
+        const chatHeaderTogglePinAction = document.getElementById("chatHeaderTogglePinAction");
+        const chatHeaderTogglePinLabel = document.getElementById("chatHeaderTogglePinLabel");
+        const chatHeaderRenameAction = document.getElementById("chatHeaderRenameAction");
+        const chatHeaderAddParticipantAction = document.getElementById("chatHeaderAddParticipantAction");
+        const chatHeaderDeleteAction = document.getElementById("chatHeaderDeleteAction");
         const chatContextMenu = document.getElementById("chatContextMenu");
         const togglePinChatAction = document.getElementById("togglePinChatAction");
         const togglePinChatLabel = document.getElementById("togglePinChatLabel");
         const renameChatAction = document.getElementById("renameChatAction");
+        const addParticipantChatAction = document.getElementById("addParticipantChatAction");
         const renameChatConfirm = document.getElementById("renameChatConfirm");
         const renameChatInput = document.getElementById("renameChatInput");
         const closeRenameChatConfirm = document.getElementById("closeRenameChatConfirm");
@@ -2180,14 +2680,268 @@
         const chatMessageContextMenu = document.getElementById("chatMessageContextMenu");
         const editMessageAction = document.getElementById("editMessageAction");
         const copyMessageAction = document.getElementById("copyMessageAction");
+        const shareMessageAction = document.getElementById("shareMessageAction");
         const deleteMessageAction = document.getElementById("deleteMessageAction");
         const deleteMessageConfirm = document.getElementById("deleteMessageConfirm");
         const closeDeleteMessageConfirm = document.getElementById("closeDeleteMessageConfirm");
         const cancelDeleteMessage = document.getElementById("cancelDeleteMessage");
         const confirmDeleteMessage = document.getElementById("confirmDeleteMessage");
+        const forwardMessageModal = document.getElementById("forwardMessageModal");
+        const forwardMessageSubtitle = document.getElementById("forwardMessageSubtitle");
+        const closeForwardMessageModal = document.getElementById("closeForwardMessageModal");
+        const cancelForwardMessageModal = document.getElementById("cancelForwardMessageModal");
+        const forwardChatList = document.getElementById("forwardChatList");
+        const mobileChatMediaQuery = window.matchMedia("(max-width: 767px)");
+        let mobileChatView = false;
+        let messageSearchMatches = [];
+        let activeMessageSearchMatchIndex = -1;
+
+        function isMobileChatLayout() {
+            return mobileChatMediaQuery.matches;
+        }
+
+        function syncMobileChatLayout() {
+            const isOpen = isMobileChatLayout() && mobileChatView;
+            chatShell.classList.toggle("mobile-chat-open", isOpen);
+            document.body.classList.toggle("mobile-chat-open", isOpen);
+        }
+
+        function openMobileChatView() {
+            if (!isMobileChatLayout()) {
+                return;
+            }
+
+            mobileChatView = true;
+            syncMobileChatLayout();
+        }
+
+        function closeMobileChatView() {
+            mobileChatView = false;
+            syncMobileChatLayout();
+        }
+
+        function getMessageById(messageId) {
+            if (!messageId || activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                return null;
+            }
+
+            return CHAT_DATA[activeChatIndex].messages.find((item) => item.id === messageId) || null;
+        }
+
+        function truncateText(value, limit = 96) {
+            const text = String(value || "").trim();
+
+            if (text.length <= limit) {
+                return text;
+            }
+
+            return `${text.slice(0, limit).trimEnd()}...`;
+        }
+
+        function getForwardTargetChats() {
+            const currentChatId = CHAT_DATA[activeChatIndex]?.id ?? null;
+
+            return CHAT_DATA.filter((chat) => !chat.hidden && chat.id !== currentChatId);
+        }
+
+        function buildCopyableMessageText(message) {
+            if (!message) {
+                return "";
+            }
+
+            const parts = [];
+
+            if (message.isForwarded && message.forwardedFromName) {
+                parts.push(`Переслано от: ${message.forwardedFromName}`);
+            }
+
+            if (String(message.text || "").trim()) {
+                parts.push(String(message.text || "").trim());
+            }
+
+            if (Array.isArray(message.attachments) && message.attachments.length) {
+                parts.push(
+                    `Файлы: ${message.attachments.map((attachment) => attachment.name).filter(Boolean).join(", ")}`
+                );
+            }
+
+            return parts.filter(Boolean).join("\n");
+        }
+
+        async function writeTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const helperField = document.createElement("textarea");
+            helperField.value = text;
+            helperField.setAttribute("readonly", "");
+            helperField.style.position = "fixed";
+            helperField.style.opacity = "0";
+            helperField.style.pointerEvents = "none";
+            document.body.appendChild(helperField);
+            helperField.focus();
+            helperField.select();
+            document.execCommand("copy");
+            document.body.removeChild(helperField);
+        }
+
+        function getMessageSearchQuery() {
+            return (chatMessageSearchInput.value || "").trim().toLowerCase();
+        }
+
+        function updateMessageSearchNavButtons() {
+            const hasMatches = messageSearchMatches.length > 0;
+            chatMessageSearchPrevBtn.disabled = !hasMatches;
+            chatMessageSearchNextBtn.disabled = !hasMatches;
+        }
+
+        function scrollToActiveMessageSearchMatch() {
+            if (activeMessageSearchMatchIndex < 0 || !messageSearchMatches[activeMessageSearchMatchIndex]) {
+                return;
+            }
+
+            requestAnimationFrame(() => {
+                messageSearchMatches[activeMessageSearchMatchIndex].scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                });
+            });
+        }
+
+        function goToMessageSearchMatch(direction) {
+            if (!messageSearchMatches.length) {
+                return;
+            }
+
+            activeMessageSearchMatchIndex =
+                (activeMessageSearchMatchIndex + direction + messageSearchMatches.length) % messageSearchMatches.length;
+
+            messageSearchMatches.forEach((bubble, index) => {
+                bubble.classList.toggle("message-search-match-active", index === activeMessageSearchMatchIndex);
+            });
+
+            scrollToActiveMessageSearchMatch();
+        }
+
+        function openMessageSearchPanel() {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                return;
+            }
+
+            closeChatHeaderMenu();
+            chatPanelHeader.classList.add("is-searching");
+            panelSearchToggleBtn.hidden = true;
+            chatMessageSearchWrap.hidden = false;
+            chatMessageSearchWrap.classList.add("show");
+            updateMessageSearchNavButtons();
+
+            requestAnimationFrame(() => {
+                chatMessageSearchInput.focus();
+                chatMessageSearchInput.select();
+            });
+        }
+
+        function closeMessageSearchPanel(shouldRender = true) {
+            chatPanelHeader.classList.remove("is-searching");
+            panelSearchToggleBtn.hidden = false;
+            chatMessageSearchInput.value = "";
+            messageSearchMatches = [];
+            activeMessageSearchMatchIndex = -1;
+            updateMessageSearchNavButtons();
+            chatMessageSearchWrap.classList.remove("show");
+            chatMessageSearchWrap.hidden = true;
+
+            if (shouldRender) {
+                renderActiveChat(false);
+            }
+        }
+
+        function openChatHeaderMenu() {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                return;
+            }
+
+            const activeChat = CHAT_DATA[activeChatIndex];
+            chatHeaderTogglePinLabel.textContent = activeChat?.pinned ? "Открепить" : "Закрепить";
+            syncChatActionVisibility(activeChat);
+            chatHeaderMenu.classList.add("show");
+
+            requestAnimationFrame(() => {
+                const menuWidth = chatHeaderMenu.offsetWidth;
+                const menuHeight = chatHeaderMenu.offsetHeight;
+                const toggleRect = chatHeaderMenuToggle.getBoundingClientRect();
+                const left = Math.min(toggleRect.right - menuWidth, window.innerWidth - menuWidth - 12);
+                const top = Math.min(toggleRect.bottom + 8, window.innerHeight - menuHeight - 12);
+
+                chatHeaderMenu.style.left = `${Math.max(12, left)}px`;
+                chatHeaderMenu.style.top = `${Math.max(12, top)}px`;
+            });
+        }
+
+        function closeChatHeaderMenu() {
+            chatHeaderMenu.classList.remove("show");
+        }
 
         function updateChatSearchClearButton() {
             chatSearchClearBtn.hidden = !chatSearch.value.trim();
+        }
+
+        function getActiveChat() {
+            return activeChatIndex >= 0 ? CHAT_DATA[activeChatIndex] || null : null;
+        }
+
+        function getChatById(chatId) {
+            return CHAT_DATA.find((chat) => chat.id === chatId) || null;
+        }
+
+        function syncCreateChatAvailability() {
+            openCreateChatModal.hidden = !CURRENT_CHAT_USER.isMentor;
+        }
+
+        function syncChatActionVisibility(chat) {
+            const canManage = Boolean(chat && chat.canManage);
+            const canAddMembers = Boolean(chat && chat.canAddMembers);
+            const hasChat = Boolean(chat);
+
+            renameChatAction.hidden = !canManage;
+            deleteChatAction.hidden = !hasChat;
+            addParticipantChatAction.hidden = !canAddMembers;
+
+            chatHeaderRenameAction.hidden = !canManage;
+            chatHeaderDeleteAction.hidden = !hasChat;
+            chatHeaderAddParticipantAction.hidden = !canAddMembers;
+        }
+
+        function getSelectableTrainees() {
+            if (chatPickerMode !== "add") {
+                return TRAINEES;
+            }
+
+            const targetChat = getChatById(targetChatIdForParticipantAdd);
+            if (!targetChat) {
+                return [];
+            }
+
+            const activeParticipantIds = new Set(targetChat.participantIds || []);
+            return TRAINEES.filter((trainee) => !activeParticipantIds.has(trainee.id));
+        }
+
+        function configureChatPicker(mode, chat = null) {
+            chatPickerMode = mode;
+            targetChatIdForParticipantAdd = mode === "add" && chat ? chat.id : null;
+            selectedTraineeIds = [];
+
+            if (mode === "add") {
+                chatModalTitle.textContent = "Добавить в чат";
+                chatModalSubtitle.textContent = "Выберите стажёров, которых хотите добавить в группу";
+                submitCreateChat.textContent = "Добавить";
+            } else {
+                chatModalTitle.textContent = "Новый чат";
+                chatModalSubtitle.textContent = "Выберите стажёров, которых хотите добавить в чат";
+                submitCreateChat.textContent = "Создать чат";
+            }
         }
 
         function hideEditingBanner() {
@@ -2364,7 +3118,7 @@
             return items;
         }
 
-        function renderTimelineItem(item) {
+        function renderTimelineItem(item, chat = null) {
             if (item.kind === "date-divider") {
                 return `
                     <div class="message-row date-divider">
@@ -2381,10 +3135,22 @@
                 `;
             }
 
-            const attachmentsMarkup = Array.isArray(item.attachments) && item.attachments.length
+            const messageText = String(item.text || "").trim();
+            const messageAttachments = Array.isArray(item.attachments)
+                ? item.attachments.filter((attachment) => !Boolean(
+                    attachment.isAudio
+                    || String(attachment.contentType || "").toLowerCase().startsWith("audio/")
+                ))
+                : [];
+
+            if (!messageText && !messageAttachments.length) {
+                return "";
+            }
+
+            const attachmentsMarkup = messageAttachments.length
                 ? `
                     <div class="message-attachments">
-                        ${item.attachments.map((attachment) => `
+                        ${messageAttachments.map((attachment) => `
                             <a class="message-attachment ${attachment.isImage ? 'image' : 'file'}" href="${attachment.url}" target="_blank" rel="noopener noreferrer" download>
                                 ${attachment.isImage
                                     ? `<img src="${attachment.url}" alt="${escapeHtml(attachment.name)}" class="message-attachment-preview">`
@@ -2396,11 +3162,19 @@
                     </div>
                 `
                 : "";
+            const senderLabel = chat && chat.showSenderNames && item.type !== "outgoing" && item.senderDisplayName
+                ? `<div class="message-sender">${escapeHtml(item.senderDisplayName)}</div>`
+                : "";
+            const forwardedLabel = item.isForwarded && item.forwardedFromName
+                ? `<div class="message-forwarded">Переслано от ${escapeHtml(item.forwardedFromName)}</div>`
+                : "";
 
             return `
                 <div class="message-row ${item.type === 'outgoing' ? 'outgoing' : ''}">
                     <div class="message-bubble" data-message-id="${item.id}">
-                        <div class="message-text">${escapeHtml(item.text)}</div>
+                        ${forwardedLabel}
+                        ${senderLabel}
+                        ${messageText ? `<div class="message-text">${escapeHtml(item.text)}</div>` : ""}
                         ${attachmentsMarkup}
                         <div class="message-meta">
                             <span class="message-time">${formatMessageTime(item.sentAt)}</span>
@@ -2421,6 +3195,8 @@
 
                 if (fallbackIndex === -1) {
                     activeChatIndex = -1;
+                    closeMobileChatView();
+                    closeMessageSearchPanel(false);
                     hideEditingBanner();
                     panelAvatar.src = "{% static 'images/1.png' %}";
                     panelTitle.textContent = "Нет активного чата";
@@ -2430,6 +3206,7 @@
                             <div class="message-system">Пока нет чатов. Нажмите + слева, чтобы создать новый диалог.</div>
                         </div>
                     `;
+                    syncChatActionVisibility(null);
                     updateUnreadBadges();
                     return;
                 } else {
@@ -2445,10 +3222,14 @@
             panelAvatar.src = activeChat.avatar;
             panelTitle.textContent = activeChat.title;
             panelStatus.textContent = activeChat.subtitle;
+            syncChatActionVisibility(activeChat);
 
             chatMessages.innerHTML = buildTimelineItems(activeChat.messages)
-                .map(renderTimelineItem)
+                .map((item) => renderTimelineItem(item, activeChat))
                 .join("");
+
+            const messageSearchQuery = getMessageSearchQuery();
+            messageSearchMatches = [];
 
             document.querySelectorAll(".message-bubble[data-message-id]").forEach((bubble) => {
                 bubble.addEventListener("contextmenu", (event) => {
@@ -2457,20 +3238,53 @@
                     const messageId = Number(bubble.dataset.messageId);
                     const message = CHAT_DATA[activeChatIndex]?.messages?.find((item) => item.id === messageId);
 
-                    if (!message || message.type !== "outgoing") {
+                    if (!message) {
                         return;
                     }
 
                     openMessageContextMenu(messageId, event.clientX, event.clientY);
                 });
+
+                const messageId = Number(bubble.dataset.messageId);
+                const message = CHAT_DATA[activeChatIndex]?.messages?.find((item) => item.id === messageId);
+                const isMatch = Boolean(
+                    messageSearchQuery
+                    && message
+                    && String(message.text || "").toLowerCase().includes(messageSearchQuery)
+                );
+
+                bubble.classList.toggle("message-search-match", isMatch);
+                bubble.classList.remove("message-search-match-active");
+
+                if (isMatch) {
+                    messageSearchMatches.push(bubble);
+                }
             });
+
+            if (messageSearchMatches.length) {
+                if (activeMessageSearchMatchIndex < 0 || activeMessageSearchMatchIndex >= messageSearchMatches.length) {
+                    activeMessageSearchMatchIndex = 0;
+                }
+
+                messageSearchMatches.forEach((bubble, index) => {
+                    bubble.classList.toggle("message-search-match-active", index === activeMessageSearchMatchIndex);
+                });
+            } else {
+                activeMessageSearchMatchIndex = -1;
+            }
+
+            updateMessageSearchNavButtons();
 
             if (shouldScroll) {
                 scrollMessagesToBottom();
+            } else if (activeMessageSearchMatchIndex >= 0) {
+                scrollToActiveMessageSearchMatch();
             }
+
+            syncMobileChatLayout();
         }
 
-        function activateChat(index, shouldScroll = true) {
+        function activateChat(index, shouldScroll = true, shouldOpenMobileView = true) {
             if (!CHAT_DATA[index] || CHAT_DATA[index].hidden) {
                 return;
             }
@@ -2485,6 +3299,11 @@
 
             renderChatList(chatSearch.value);
             renderActiveChat(shouldScroll);
+
+            if (shouldOpenMobileView) {
+                openMobileChatView();
+            }
+
             persistChats();
 
             postJson(CHAT_API.open, { chat_id: CHAT_DATA[index].id })
@@ -2570,6 +3389,7 @@
 
             contextChatIndex = index;
             togglePinChatLabel.textContent = targetChat.pinned ? "Открепить" : "Закрепить";
+            syncChatActionVisibility(targetChat);
             chatContextMenu.classList.add("show");
 
             requestAnimationFrame(() => {
@@ -2626,17 +3446,111 @@
 
         editMessageAction.addEventListener("click", startEditingMessage);
 
+        function syncMessageContextMenuState(message) {
+            const canEdit = Boolean(message && message.type === "outgoing");
+            const canCopy = Boolean(buildCopyableMessageText(message));
+            const canDelete = Boolean(message && message.type === "outgoing");
+
+            editMessageAction.hidden = !canEdit;
+            copyMessageAction.hidden = !canCopy;
+            shareMessageAction.hidden = true;
+            deleteMessageAction.hidden = !canDelete;
+        }
+
         async function copyMessageText() {
             if (!contextMessageId || activeChatIndex < 0) return;
 
             const message = CHAT_DATA[activeChatIndex].messages.find(item => item.id === contextMessageId);
             if (!message) return;
 
-            await navigator.clipboard.writeText(message.text || "");
-            closeMessageContextMenu();
+            try {
+                await writeTextToClipboard(buildCopyableMessageText(message));
+                closeMessageContextMenu();
+            } catch (error) {
+                handleRequestError(error);
+            }
         }
 
         copyMessageAction.addEventListener("click", copyMessageText);
+
+        function closeForwardMessageDialog() {
+            forwardMessageModal.classList.remove("show");
+            forwardChatList.innerHTML = "";
+            forwardingMessageId = null;
+        }
+
+        async function forwardMessageToChat(targetChatId) {
+            if (!forwardingMessageId || !targetChatId) {
+                return;
+            }
+
+            try {
+                const data = await postJson(CHAT_API.messageForward, {
+                    message_id: forwardingMessageId,
+                    target_chat_id: targetChatId,
+                });
+                syncChatState(data, { activeChatId: data.activeChatId, scrollToBottom: true });
+                openMobileChatView();
+                closeForwardMessageDialog();
+            } catch (error) {
+                handleRequestError(error);
+            }
+        }
+
+        function renderForwardChatList() {
+            const targetChats = getForwardTargetChats();
+
+            if (!targetChats.length) {
+                forwardChatList.innerHTML = `
+                    <div class="chat-modal-empty">Нет доступных чатов для пересылки.</div>
+                `;
+                return;
+            }
+
+            forwardChatList.innerHTML = targetChats.map((chat) => `
+                <button type="button" class="chat-modal-item" data-chat-id="${chat.id}">
+                    <div class="chat-modal-avatar">
+                        <img src="${chat.avatar}" alt="${escapeHtml(chat.title)}">
+                    </div>
+
+                    <div>
+                        <div class="chat-modal-name">${escapeHtml(chat.title)}</div>
+                        <div class="chat-modal-role">${escapeHtml(chat.subtitle)}</div>
+                    </div>
+                </button>
+            `).join("");
+
+            document.querySelectorAll("#forwardChatList .chat-modal-item").forEach((button) => {
+                button.addEventListener("click", () => {
+                    forwardMessageToChat(Number(button.dataset.chatId));
+                });
+            });
+        }
+
+        function openForwardMessageDialog() {
+            const message = getMessageById(contextMessageId);
+
+            if (!message || !getForwardTargetChats().length) {
+                return;
+            }
+
+            forwardingMessageId = contextMessageId;
+            const previewText = truncateText(message.text || "Сообщение без текста");
+            forwardMessageSubtitle.textContent = `Выберите чат, куда переслать сообщение: «${previewText}»`;
+            renderForwardChatList();
+            forwardMessageModal.classList.add("show");
+            closeMessageContextMenu(false);
+        }
+
+        shareMessageAction.addEventListener("click", openForwardMessageDialog);
+        closeForwardMessageModal.addEventListener("click", closeForwardMessageDialog);
+        cancelForwardMessageModal.addEventListener("click", closeForwardMessageDialog);
+
+        forwardMessageModal.addEventListener("click", (event) => {
+            if (event.target === forwardMessageModal) {
+                closeForwardMessageDialog();
+            }
+        });
 
         function openDeleteMessageConfirmDialog() {
             if (!contextMessageId) return;
@@ -2744,6 +3658,7 @@
 
         function openMessageContextMenu(messageId, x, y) {
             contextMessageId = messageId;
+            syncMessageContextMenuState(getMessageById(messageId));
             chatMessageContextMenu.classList.add("show");
 
             requestAnimationFrame(() => {
@@ -2807,13 +3722,31 @@
         }
 
         function openCreateChatDialog() {
+            if (!CURRENT_CHAT_USER.isMentor) {
+                return;
+            }
+
+            configureChatPicker("create");
             createChatModal.classList.add("show");
-            selectedTraineeIds = [];
+            renderTraineeList();
+        }
+
+        function openAddParticipantsDialog(chatIndex) {
+            const targetChat = CHAT_DATA[chatIndex];
+
+            if (!targetChat || !targetChat.canAddMembers) {
+                return;
+            }
+
+            configureChatPicker("add", targetChat);
+            createChatModal.classList.add("show");
             renderTraineeList();
         }
 
         function closeCreateChatDialog() {
             createChatModal.classList.remove("show");
+            targetChatIdForParticipantAdd = null;
+            chatPickerMode = "create";
         }
 
         // Chat mutations
@@ -2841,8 +3774,14 @@
             }
 
             try {
-                const data = await postJson(CHAT_API.create, { participant_ids: selectedTraineeIds });
+                const isAddMode = chatPickerMode === "add";
+                const endpoint = isAddMode ? CHAT_API.addParticipants : CHAT_API.create;
+                const payload = isAddMode
+                    ? { chat_id: targetChatIdForParticipantAdd, participant_ids: selectedTraineeIds }
+                    : { participant_ids: selectedTraineeIds };
+                const data = await postJson(endpoint, payload);
                 syncChatState(data, { activeChatId: data.activeChatId, scrollToBottom: true });
+                openMobileChatView();
                 closeCreateChatDialog();
             } catch (error) {
                 handleRequestError(error);
@@ -2855,6 +3794,15 @@
 
         togglePinChatAction.addEventListener("click", togglePinnedChat);
         renameChatAction.addEventListener("click", openRenameChatDialog);
+        addParticipantChatAction.addEventListener("click", () => {
+            if (contextChatIndex === null) {
+                return;
+            }
+
+            const targetIndex = contextChatIndex;
+            closeChatContextMenu(false);
+            openAddParticipantsDialog(targetIndex);
+        });
         deleteChatAction.addEventListener("click", openDeleteChatConfirmDialog);
         closeRenameChatConfirm.addEventListener("click", closeRenameChatDialog);
         cancelRenameChat.addEventListener("click", closeRenameChatDialog);
@@ -2878,6 +3826,10 @@
         document.addEventListener("click", (event) => {
             if (!event.target.closest(".chat-context-menu") && !event.target.closest(".chat-item")) {
                 closeChatContextMenu();
+            }
+
+            if (!event.target.closest("#chatHeaderMenu") && !event.target.closest("#chatHeaderMenuToggle")) {
+                closeChatHeaderMenu();
             }
 
             if (!event.target.closest("#chatMessageContextMenu") && !event.target.closest(".message-bubble")) {
@@ -2915,12 +3867,22 @@
                 return;
             }
 
+            if (chatHeaderMenu.classList.contains("show")) {
+                closeChatHeaderMenu();
+                return;
+            }
+
             if (attachMenu.classList.contains("show")) {
                 attachMenu.classList.remove("show");
             }
 
             if (deleteMessageConfirm.classList.contains("show")) {
                 closeDeleteMessageConfirmDialog();
+                return;
+            }
+
+            if (forwardMessageModal.classList.contains("show")) {
+                closeForwardMessageDialog();
                 return;
             }
 
@@ -2933,10 +3895,17 @@
                 hideEditingBanner();
                 resetTextarea();
             }
+
+            if (chatMessageSearchWrap.classList.contains("show")) {
+                closeMessageSearchPanel();
+            }
         });
 
         window.addEventListener("resize", closeChatContextMenu);
+        window.addEventListener("resize", closeChatHeaderMenu);
+        window.addEventListener("resize", syncMobileChatLayout);
         window.addEventListener("scroll", closeChatContextMenu, true);
+        window.addEventListener("scroll", closeChatHeaderMenu, true);
         window.addEventListener("focus", updateUnreadBadges);
 
         renameChatInput.addEventListener("keydown", (event) => {
@@ -2947,7 +3916,16 @@
         });
 
         function renderTraineeList() {
-            traineeList.innerHTML = TRAINEES
+            const availableTrainees = getSelectableTrainees();
+
+            if (!availableTrainees.length) {
+                traineeList.innerHTML = `
+                    <div class="chat-modal-empty">Нет доступных стажёров для выбора.</div>
+                `;
+                return;
+            }
+
+            traineeList.innerHTML = availableTrainees
                 .map(trainee => {
                     const isSelected = selectedTraineeIds.includes(trainee.id);
 
@@ -3116,6 +4094,92 @@
             chatSearch.focus();
         });
 
+        panelSearchToggleBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+
+            if (chatMessageSearchWrap.classList.contains("show")) {
+                closeMessageSearchPanel();
+                return;
+            }
+
+            openMessageSearchPanel();
+        });
+
+        chatMessageSearchInput.addEventListener("input", () => {
+            renderActiveChat(false);
+        });
+
+        chatMessageSearchPrevBtn.addEventListener("click", () => {
+            goToMessageSearchMatch(-1);
+        });
+
+        chatMessageSearchNextBtn.addEventListener("click", () => {
+            goToMessageSearchMatch(1);
+        });
+
+        chatMessageSearchCloseBtn.addEventListener("click", () => {
+            closeMessageSearchPanel();
+        });
+
+        chatHeaderMenuToggle.addEventListener("click", (event) => {
+            event.stopPropagation();
+
+            if (chatHeaderMenu.classList.contains("show")) {
+                closeChatHeaderMenu();
+                return;
+            }
+
+            openChatHeaderMenu();
+        });
+
+        chatHeaderDeleteAction.addEventListener("click", () => {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                closeChatHeaderMenu();
+                return;
+            }
+
+            contextChatIndex = activeChatIndex;
+            closeChatHeaderMenu();
+            openDeleteChatConfirmDialog();
+        });
+
+        chatHeaderTogglePinAction.addEventListener("click", () => {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                closeChatHeaderMenu();
+                return;
+            }
+
+            contextChatIndex = activeChatIndex;
+            closeChatHeaderMenu();
+            togglePinnedChat();
+        });
+
+        chatHeaderRenameAction.addEventListener("click", () => {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                closeChatHeaderMenu();
+                return;
+            }
+
+            contextChatIndex = activeChatIndex;
+            closeChatHeaderMenu();
+            openRenameChatDialog();
+        });
+
+        chatHeaderAddParticipantAction.addEventListener("click", () => {
+            if (activeChatIndex < 0 || !CHAT_DATA[activeChatIndex]) {
+                closeChatHeaderMenu();
+                return;
+            }
+
+            const targetIndex = activeChatIndex;
+            closeChatHeaderMenu();
+            openAddParticipantsDialog(targetIndex);
+        });
+
+        mobileBackToListBtn.addEventListener("click", () => {
+            closeMobileChatView();
+        });
+
         chatForm.addEventListener("submit", async (event) => {
             event.preventDefault();
 
@@ -3250,9 +4314,16 @@
         });
 
         // Init
+        syncCreateChatAvailability();
         updateChatSearchClearButton();
+        updateMessageSearchNavButtons();
         renderChatList();
-        activateChat(activeChatIndex);
+        if (activeChatIndex >= 0 && !isMobileChatLayout()) {
+            activateChat(activeChatIndex, true, false);
+        } else {
+            renderActiveChat();
+            syncMobileChatLayout();
+        }
         resetTextarea();
 
     </script>
