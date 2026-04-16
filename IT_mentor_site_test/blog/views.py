@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 import requests
 import json
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
 from .models import (
     Users, Mentors, Interns, Emails_workers,
     Open1, Open3, Event, Review,
@@ -13,6 +14,7 @@ from django.templatetags.static import static
 from django.db.models import Q
 
 import mimetypes
+import os
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
@@ -251,6 +253,45 @@ def get_user_secondary_label(user, profile_map=None):
     return "Пользователь платформы"
 
 
+def get_user_message_label(user, profile_map=None):
+    profile_map = profile_map or {}
+    profile = profile_map.get(user.email)
+
+    if profile:
+        full_name = " ".join(
+            part for part in [profile.surname, profile.name] if part
+        ).strip()
+        if full_name:
+            return full_name
+
+    return get_user_display_name(user, profile_map)
+
+
+def is_mentor_chat_user(user):
+    return bool(user and Mentors.objects.filter(email=user.email).exists())
+
+
+def get_active_chat_participants(chat):
+    return [
+        participant
+        for participant in chat.participants.all()
+        if participant.is_active and not participant.is_hidden
+    ]
+
+
+def is_group_chat(chat):
+    return bool(chat and chat.chat_type == Chat.CHAT_TYPE_GROUP)
+
+
+def can_manage_chat(current_user, chat):
+    return bool(
+        current_user
+        and chat
+        and is_mentor_chat_user(current_user)
+        and chat.created_by_id == current_user.id
+    )
+
+
 def get_chat_queryset_for_user(current_user):
     return (
         ChatParticipant.objects
@@ -292,7 +333,7 @@ def serialize_attachment(attachment):
     }
 
 
-def serialize_message(message, current_user, participants):
+def serialize_message(message, current_user, participants, profile_map, show_sender_names=False):
     if message.message_type == ChatMessage.TYPE_SYSTEM:
         return {
             "id": message.id,
@@ -306,11 +347,18 @@ def serialize_message(message, current_user, participants):
         "kind": "message",
         "type": "outgoing" if message.sender_id == current_user.id else "incoming",
         "text": message.text,
+        "isForwarded": bool(message.forwarded_from_name),
+        "forwardedFromName": message.forwarded_from_name,
         "sentAt": message.created_at.isoformat(),
         "edited": message.is_edited,
         "editedAt": message.edited_at.isoformat() if message.edited_at else None,
         "deleted": message.is_deleted,
         "read": is_message_read_for_current_user(message, current_user, participants),
+        "senderDisplayName": (
+            get_user_message_label(message.sender, profile_map)
+            if show_sender_names and message.sender_id and message.sender_id != current_user.id and message.sender
+            else ""
+        ),
         "attachments": [serialize_attachment(item) for item in message.attachments.all()],
     }
 
@@ -349,17 +397,47 @@ def serialize_chat(participant, current_user, profile_map):
     chat = participant.chat
     unread_count = get_unread_count_for_participant(participant, current_user)
     participants = list(chat.participants.all())
-    
+    active_participants = [
+        item for item in participants
+        if item.is_active and not item.is_hidden
+    ]
+    participant_count = len(active_participants)
+    is_group = is_group_chat(chat)
+    is_direct_chat = not is_group
+    show_sender_names = is_group
+    active_user_ids = [item.user_id for item in active_participants]
+    other_participant = next(
+        (item for item in active_participants if item.user_id != current_user.id),
+        None,
+    )
+
+    if is_direct_chat and other_participant:
+        title = get_user_display_name(other_participant.user, profile_map)
+        subtitle = get_user_secondary_label(other_participant.user, profile_map)
+    elif is_group:
+        title = chat.title
+        subtitle = f"Участников: {participant_count}"
+    else:
+        title = chat.title
+        subtitle = chat.subtitle
+
     return {
         "id": chat.id,
-        "title": chat.title,
-        "subtitle": chat.subtitle,
+        "title": title,
+        "subtitle": subtitle,
         "unread": unread_count,
         "pinned": participant.is_pinned,
         "hidden": participant.is_hidden,
         "avatar": CHAT_USER_AVATAR,
+        "participantCount": participant_count,
+        "participantIds": active_user_ids,
+        "isDirect": is_direct_chat,
+        "isGroup": is_group,
+        "showSenderNames": show_sender_names,
+        "canManage": can_manage_chat(current_user, chat),
+        "canAddMembers": can_manage_chat(current_user, chat) and is_group,
         "messages": [
-            serialize_message(message, current_user, participants)
+            serialize_message(message, current_user, participants, profile_map, show_sender_names)
             for message in chat.messages.all()
         ],
     }
@@ -384,7 +462,16 @@ def get_chat_state_payload(current_user):
 
 
 def get_chat_picker_payload(current_user):
-    users = list(Users.objects.exclude(id=current_user.id).order_by("email"))
+    if not is_mentor_chat_user(current_user):
+        return []
+
+    intern_emails = Interns.objects.values_list("email", flat=True)
+    users = list(
+        Users.objects
+        .filter(email__in=intern_emails)
+        .exclude(id=current_user.id)
+        .order_by("email")
+    )
     profile_map = get_open3_map_by_emails([user.email for user in users])
 
     return [
@@ -455,6 +542,30 @@ def add_attachments_to_message(message, uploaded_files):
             original_name=uploaded_file.name,
             content_type=content_type,
             size=uploaded_file.size or 0,
+        )
+
+
+def clone_attachments_to_message(source_message, target_message):
+    for attachment in source_message.attachments.all():
+        if not attachment.file:
+            continue
+
+        attachment.file.open("rb")
+        try:
+            file_bytes = attachment.file.read()
+        finally:
+            attachment.file.close()
+
+        cloned_attachment = ChatAttachment(
+            message=target_message,
+            original_name=attachment.original_name,
+            content_type=attachment.content_type,
+            size=attachment.size,
+        )
+        cloned_attachment.file.save(
+            os.path.basename(attachment.file.name) or attachment.original_name,
+            ContentFile(file_bytes),
+            save=True,
         )
 
 
@@ -547,6 +658,10 @@ def chat_page(request):
         'chat_unread_count': chat_state["unreadCount"],
         'chat_bootstrap': chat_state["chats"],
         'chat_picker_users': get_chat_picker_payload(current_user),
+        'chat_current_user': {
+            'role': request.session.get('role', ''),
+            'isMentor': is_mentor_chat_user(current_user),
+        },
     }
     return render(request, 'blog/chat.html', context)
 
@@ -731,6 +846,8 @@ def chat_create_api(request):
     current_user = get_current_users_user(request)
     if not current_user:
         return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
+    if not is_mentor_chat_user(current_user):
+        return JsonResponse({"ok": False, "error": "Создавать чаты может только ментор."}, status=403)
     payload = parse_request_json(request)
     participant_ids = payload.get("participant_ids") or []
 
@@ -742,9 +859,14 @@ def chat_create_api(request):
     if not participant_ids:
         return JsonResponse({"ok": False, "error": "Выберите хотя бы одного участника."}, status=400)
 
-    selected_users = list(Users.objects.filter(id__in=participant_ids).order_by("id"))
+    intern_emails = Interns.objects.values_list("email", flat=True)
+    selected_users = list(
+        Users.objects
+        .filter(id__in=participant_ids, email__in=intern_emails)
+        .order_by("id")
+    )
     if len(selected_users) != len(participant_ids):
-        return JsonResponse({"ok": False, "error": "Некоторые участники не найдены."}, status=404)
+        return JsonResponse({"ok": False, "error": "Можно добавлять только существующих стажёров."}, status=404)
 
     emails = [user.email for user in selected_users] + [current_user.email]
     profile_map = get_open3_map_by_emails(emails)
@@ -754,6 +876,7 @@ def chat_create_api(request):
         chat = Chat.objects.create(
             title=title,
             subtitle=subtitle,
+            chat_type=Chat.CHAT_TYPE_DIRECT if len(selected_users) == 1 else Chat.CHAT_TYPE_GROUP,
             created_by=current_user,
         )
 
@@ -768,7 +891,8 @@ def chat_create_api(request):
             for user in selected_users
         ])
 
-        create_system_message(chat, f"Ментор создал группу «{title}»", sender=current_user)
+        if len(selected_users) > 1:
+            create_system_message(chat, f"Ментор создал группу «{title}»", sender=current_user)
 
     return build_chat_response(current_user, activeChatId=chat.id)
 
@@ -860,6 +984,8 @@ def chat_rename_api(request):
         is_hidden=False,
         is_active=True,
     )
+    if not can_manage_chat(current_user, participant.chat):
+        return JsonResponse({"ok": False, "error": "Переименовывать чат может только ментор."}, status=403)
 
     participant.chat.title = title
     participant.chat.updated_at = timezone.now()
@@ -870,12 +996,21 @@ def chat_rename_api(request):
 
 @login_required
 @require_POST
-def chat_delete_api(request):
+def chat_add_participants_api(request):
     current_user = get_current_users_user(request)
     if not current_user:
         return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
     payload = parse_request_json(request)
     chat_id = payload.get("chat_id")
+    participant_ids = payload.get("participant_ids") or []
+
+    try:
+        participant_ids = sorted({int(item) for item in participant_ids if int(item) != current_user.id})
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Некорректный список участников."}, status=400)
+
+    if not participant_ids:
+        return JsonResponse({"ok": False, "error": "Выберите хотя бы одного стажёра."}, status=400)
 
     participant = get_object_or_404(
         ChatParticipant,
@@ -884,18 +1019,57 @@ def chat_delete_api(request):
         is_hidden=False,
         is_active=True,
     )
+    if not can_manage_chat(current_user, participant.chat):
+        return JsonResponse({"ok": False, "error": "Добавлять в чат может только ментор."}, status=403)
 
-    display_name = get_user_display_name(current_user, get_open3_map_by_emails([current_user.email]))
+    if not is_group_chat(participant.chat):
+        return JsonResponse({"ok": False, "error": "Добавлять участников можно только в группу."}, status=400)
+
+    intern_emails = Interns.objects.values_list("email", flat=True)
+    selected_users = list(
+        Users.objects
+        .filter(id__in=participant_ids, email__in=intern_emails)
+        .order_by("id")
+    )
+    if len(selected_users) != len(participant_ids):
+        return JsonResponse({"ok": False, "error": "Можно добавлять только существующих стажёров."}, status=404)
+
+    existing_links = {
+        item.user_id: item
+        for item in ChatParticipant.objects.filter(chat=participant.chat, user_id__in=participant_ids)
+    }
+    added_users = []
 
     with transaction.atomic():
-        create_system_message(participant.chat, f"{display_name} вышел из чата", sender=current_user)
-        participant.is_hidden = True
-        participant.is_active = False
-        participant.is_pinned = False
-        participant.last_read_at = timezone.now()
-        participant.save(update_fields=["is_hidden", "is_active", "is_pinned", "last_read_at"])
+        for user in selected_users:
+            existing_link = existing_links.get(user.id)
 
-    return build_chat_response(current_user)
+            if existing_link:
+                if existing_link.is_active and not existing_link.is_hidden:
+                    continue
+
+                existing_link.is_hidden = False
+                existing_link.is_active = True
+                existing_link.is_pinned = False
+                existing_link.save(update_fields=["is_hidden", "is_active", "is_pinned"])
+            else:
+                ChatParticipant.objects.create(chat=participant.chat, user=user)
+
+            added_users.append(user)
+
+        if added_users:
+            profile_map = get_open3_map_by_emails([item.email for item in added_users])
+            added_names = ", ".join(
+                get_user_display_name(item, profile_map)
+                for item in added_users
+            )
+            create_system_message(participant.chat, f"Ментор добавил в чат: {added_names}", sender=current_user)
+        else:
+            participant.chat.updated_at = timezone.now()
+            participant.chat.save(update_fields=["updated_at"])
+
+    return build_chat_response(current_user, activeChatId=participant.chat_id)
+
 
 @login_required
 @require_POST
@@ -964,6 +1138,67 @@ def chat_delete_message_api(request):
         ChatParticipant.objects.filter(chat_id=chat_id, user=current_user).update(last_read_at=timezone.now())
 
     return build_chat_response(current_user, activeChatId=chat_id)
+
+
+@login_required
+@require_POST
+def chat_forward_message_api(request):
+    current_user = get_current_users_user(request)
+    if not current_user:
+        return JsonResponse({"ok": False, "error": "Не авторизован"}, status=401)
+    payload = parse_request_json(request)
+    message_id = payload.get("message_id")
+    target_chat_id = payload.get("target_chat_id")
+
+    source_message = get_object_or_404(
+        ChatMessage.objects.prefetch_related("attachments"),
+        id=message_id,
+        message_type=ChatMessage.TYPE_USER,
+        is_deleted=False,
+    )
+
+    get_object_or_404(
+        ChatParticipant,
+        chat=source_message.chat,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+    target_participant = get_object_or_404(
+        ChatParticipant,
+        chat_id=target_chat_id,
+        user=current_user,
+        is_hidden=False,
+        is_active=True,
+    )
+
+    if source_message.chat_id == target_participant.chat_id:
+        return JsonResponse({"ok": False, "error": "Нельзя переслать сообщение в этот же чат."}, status=400)
+
+    forwarded_from_name = ""
+    if source_message.sender:
+        forwarded_from_name = get_user_message_label(
+            source_message.sender,
+            get_open3_map_by_emails([source_message.sender.email]),
+        )
+
+    with transaction.atomic():
+        forwarded_message = ChatMessage.objects.create(
+            chat=target_participant.chat,
+            sender=current_user,
+            message_type=ChatMessage.TYPE_USER,
+            text=source_message.text,
+            forwarded_from_name=forwarded_from_name,
+        )
+        clone_attachments_to_message(source_message, forwarded_message)
+        target_participant.chat.updated_at = timezone.now()
+        target_participant.chat.save(update_fields=["updated_at"])
+        ChatParticipant.objects.filter(
+            chat=target_participant.chat,
+            user=current_user,
+        ).update(last_read_at=timezone.now())
+
+    return build_chat_response(current_user, activeChatId=target_participant.chat_id)
 
 
 @login_required
