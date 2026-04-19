@@ -72,13 +72,15 @@ WSGI_APPLICATION = 'IT_mentor_site_test.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres2026',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
+SECRET_KEY='lv@7(*zish=e5_^4iry!01hs^maq=csm7&k3c&9k#(cts9j_xb'
 
 
 
@@ -118,3 +120,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_COOKIE_AGE = 86400
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'solovoywri@gmail.com'
+EMAIL_HOST_PASSWORD = 'fayi kzoj swkh oztp'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True

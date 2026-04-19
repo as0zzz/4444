@@ -44,25 +44,22 @@ class Interns(models.Model):
     class Meta:
         db_table = 'interns'
 
-class Open1(models.Model):
-    email = models.EmailField(unique=True)
-    pa = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'open_1'
-
-
-class Open3(models.Model):
-    email = models.EmailField(unique=True)
+class EmailVerification(models.Model):
+    email = models.EmailField()
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=10)
     name = models.CharField(max_length=100)
     patronymic = models.CharField(max_length=100, blank=True, null=True)
     surname = models.CharField(max_length=100)
     phone = models.CharField(max_length=12)
-    pa = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
 
     class Meta:
-        db_table = 'open_3'
+        db_table = 'email_verification'
 
+    def is_expired(self, minutes=10):
+        return (timezone.now() - self.created_at).total_seconds() > minutes * 60
 
 
 

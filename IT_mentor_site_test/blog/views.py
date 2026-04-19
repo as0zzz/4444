@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect
 import requests
 import json
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
+from types import SimpleNamespace
 from .models import (
     Users, Mentors, Interns, Emails_workers,
-    Open1, Open3, Event, Review,
+    Event, Review,
     Chat, ChatAttachment, ChatMessage, ChatParticipant
 )
 from django.contrib import messages
@@ -25,6 +27,10 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import logout
 
 from django.contrib import messages
+
+import random
+from django.core.mail import send_mail
+from .models import EmailVerification
 
 from django.db.models import Avg
 from django.contrib import messages
@@ -72,35 +78,56 @@ def submit_review(request):
         return JsonResponse({'status': 'error', 'message': 'Внутренняя ошибка сервера'}, status=500)
     
 
-def open_1(request):
-    print("ФУНКЦИЯ open_1 ВЫЗВАНА")
-    print("Метод запроса:", request.method)
+def normalize_phone(phone):
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    if digits.startswith("8") and len(digits) == 11:
+        digits = f"7{digits[1:]}"
+    if len(digits) == 11 and digits.startswith("7"):
+        return f"+{digits}"
+    return (phone or "").strip()[:12]
 
+
+def send_verification_email(email, code):
+    subject = 'Код подтверждения регистрации'
+    message = f'Ваш код для завершения регистрации: {code}'
+    from_email = settings.EMAIL_HOST_USER or 'noreply@example.com'
+
+    if not (settings.EMAIL_HOST_USER and settings.EMAIL_HOST_PASSWORD):
+        raise RuntimeError('Почтовый сервер не настроен. Заполните EMAIL_HOST_USER и EMAIL_HOST_PASSWORD.')
+
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=from_email,
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+
+def open_1(request):
     if request.method == 'POST':
         data = {k.lower(): v for k, v in request.POST.items()}
         email = data.get('email')
         password = data.get('pa')
-
-        print(f"Извлечено: email={email}, password={password}")
         # Проверка среди менторов
         try:
             user = Mentors.objects.get(email=email, password=password)
+            Users.objects.get_or_create(email=user.email, defaults={'role': 'mentor'})
             request.session['user_id'] = user.id
             request.session['role'] = 'mentor'
             request.session['user_email'] = user.email
             request.session['is_authenticated'] = True
-            ensure_open1_and_open3(user.email, user.name, user.patronymic, user.surname, user.phone, role='mentor')
             return redirect('home')
         except Mentors.DoesNotExist:
             pass
         # Проверка среди практикантов
         try:
             user = Interns.objects.get(email=email, password=password)
+            Users.objects.get_or_create(email=user.email, defaults={'role': 'intern'})
             request.session['user_id'] = user.id
             request.session['role'] = 'intern'
             request.session['user_email'] = user.email
             request.session['is_authenticated'] = True
-            ensure_open1_and_open3(user.email, user.name, user.patronymic, user.surname, user.phone, role='intern')
             return redirect('home')
         except Interns.DoesNotExist:
             pass
@@ -115,12 +142,9 @@ def open_1(request):
 
 
 def open_3(request):
-    role = request.GET.get('role')
-    if not role or role not in ['mentor', 'intern']:
-        return redirect('open_2')
-
-    role_map = {'mentor': 'ментор', 'intern': 'практикант'}
-    role_ru = role_map.get(role)
+    role = request.GET.get('role', 'mentor')
+    if role not in ['mentor', 'intern']:
+        role = 'mentor'
     
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -130,6 +154,7 @@ def open_3(request):
         phone = request.POST.get('phone')
         password = request.POST.get('pa')
         confirm = request.POST.get('confirm')
+        normalized_phone = normalize_phone(phone)
 
         print(f"Получены данные: {email}, {password}")
 
@@ -148,32 +173,74 @@ def open_3(request):
             Users.objects.filter(email=email).exists()):
             return render(request, 'blog/Вход_3.html', {'error': 'Пользователь с таким email уже существует', 'role': role})
 
-        Model = Mentors if role == 'mentor' else Interns
+        code = str(random.randint(1000, 9999))
+
+        EmailVerification.objects.filter(email=email, role=role).delete()
+        EmailVerification.objects.create(
+            email=email,
+            code=code,
+            role=role,
+            name=name,
+            patronymic=patronymic or '',
+            surname=surname,
+            phone=normalized_phone,
+            password=password
+        )
+
         try:
-            new_profile = Model.objects.create(
-                email=email,
-                name=name,
-                patronymic=patronymic or '',
-                surname=surname,
-                phone=phone,
-                password=password
-            )
-            Users.objects.create(email=email, role=role_ru)
-
-            request.session['user_id'] = new_profile.id
-            request.session['role'] = role
-            request.session['user_email'] = email
-            request.session['is_authenticated'] = True
-
-            ensure_open1_and_open3(email, name, patronymic, surname, phone, role=role)
-
-            return redirect('home')
-            
+            send_verification_email(email, code)
         except Exception as e:
-            return render(request, 'blog/Вход_3.html', {'error': f'Ошибка: {str(e)}', 'role': role})
+            EmailVerification.objects.filter(email=email, role=role).delete()
+            return render(request, 'blog/Вход_3.html', {'error': f'Ошибка отправки письма: {str(e)}', 'role': role})
+
+        request.session['verification_email'] = email
+        return redirect('verify_code')
+        
     return render(request, 'blog/Вход_3.html', {'role': role})
 
 
+def verify_code(request):
+    email = request.session.get('verification_email')
+    if not email:
+        return redirect('open_3')
+
+    template_context = {}
+
+    if request.method == 'POST':
+        code = request.POST.get('code')
+        try:
+            record = EmailVerification.objects.get(email=email, code=code)
+            if record.is_expired():
+                record.delete()
+                return render(request, 'blog/verify_code.html', {'error': 'Код истёк. Зарегистрируйтесь заново.', **template_context})
+        except EmailVerification.DoesNotExist:
+            return render(request, 'blog/verify_code.html', {'error': 'Неверный код', **template_context})
+
+        Model = Mentors if record.role == 'mentor' else Interns
+
+        try:
+            new_profile = Model.objects.create(
+                email=record.email,
+                name=record.name,
+                patronymic=record.patronymic,
+                surname=record.surname,
+                phone=record.phone,
+                password=record.password
+            )
+            Users.objects.create(email=record.email, role=record.role)
+
+            request.session['user_id'] = new_profile.id
+            request.session['role'] = record.role
+            request.session['user_email'] = record.email
+            request.session['is_authenticated'] = True
+
+            record.delete()
+            request.session.pop('verification_email', None)
+            return redirect('home')
+        except Exception as e:
+            return render(request, 'blog/verify_code.html', {'error': f'Ошибка: {str(e)}', **template_context})
+
+    return render(request, 'blog/verify_code.html', template_context)
 
 # ДЕКОРАТОР
 
@@ -182,8 +249,9 @@ def login_required(view_func):
         print("=== LOGIN_REQUIRED ===")
         print("Сессия:", dict(request.session))
 
-        if not request.session.get('is_authenticated'):
+        if not request.session.get('is_authenticated') or not get_current_user(request):
             print("Нет авторизации, редирект на login")
+            request.session.flush()
             return redirect('open_1')
 
         print("Авторизация есть, показываем страницу")
@@ -207,22 +275,34 @@ def login_required(view_func):
 CHAT_USER_AVATAR = static("images/1.png")
 
 
-def get_current_open1_user(request):
-    email = request.session.get('user_email')
-    if not email:
-        return None
-    try:
-        return Open1.objects.get(email=email)
-    except Open1.DoesNotExist:
+def build_public_user(profile, role):
+    if not profile:
         return None
 
+    return SimpleNamespace(
+        id=profile.id,
+        email=profile.email,
+        name=profile.name,
+        patronymic=profile.patronymic,
+        surname=profile.surname,
+        phone=profile.phone,
+        role=role,
+    )
 
-def get_open3_map_by_emails(emails):
+
+def get_profile_map_by_emails(emails):
     if not emails:
         return {}
 
-    profiles = Open3.objects.filter(email__in=emails)
-    return {profile.email: profile for profile in profiles}
+    profile_map = {}
+
+    for mentor in Mentors.objects.filter(email__in=emails):
+        profile_map[mentor.email] = build_public_user(mentor, "mentor")
+
+    for intern in Interns.objects.filter(email__in=emails):
+        profile_map[intern.email] = build_public_user(intern, "intern")
+
+    return profile_map
 
 
 def get_user_display_name(user, profile_map=None):
@@ -451,7 +531,7 @@ def get_chat_state_payload(current_user):
         for chat_participant in link.chat.participants.all():
             emails.add(chat_participant.user.email)
 
-    profile_map = get_open3_map_by_emails(emails)
+    profile_map = get_profile_map_by_emails(emails)
     chats = [serialize_chat(link, current_user, profile_map) for link in participant_links]
     unread_count = sum(chat["unread"] for chat in chats)
 
@@ -472,7 +552,7 @@ def get_chat_picker_payload(current_user):
         .exclude(id=current_user.id)
         .order_by("email")
     )
-    profile_map = get_open3_map_by_emails([user.email for user in users])
+    profile_map = get_profile_map_by_emails([user.email for user in users])
 
     return [
         {
@@ -578,24 +658,16 @@ def clone_attachments_to_message(source_message, target_message):
 
 @login_required
 def index(request):
-    user = get_current_open1_user(request)
+    user = get_current_user(request)
     return render(request, 'blog/index.html', {'user': user})
-
-def open_2(request):
-    user = request.session.get('user', {})
-    return render(request, 'blog/Вход_2.html', {'user': user})
-    
 
 @login_required
 def home(request):
-    user = get_current_open1_user(request)
+    user = get_current_user(request)
 
     if not user:
-        email = request.session.get('user_email')
-        if email:
-            user, _ = Open1.objects.get_or_create(email=email)
-        else:
-            return redirect('open_1')
+        request.session.flush()
+        return redirect('open_1')
 
     # 2. Ранний код
     events = Event.objects.all() # все мероприятия
@@ -614,7 +686,7 @@ def home(request):
         })
 
     # 3. Мой код с рейтингом
-    all_specialists = Open3.objects.all()
+    all_specialists = list(Mentors.objects.all()) + list(Interns.objects.all())
     specialists_data = []
     
     for spec in all_specialists:
@@ -642,10 +714,10 @@ def home(request):
 def profile(request):
     """Защищенная страница — только для авторизованных"""
     try:
-        user = Open3.objects.get(email=request.session['user_email'])
+        user = get_current_user(request)
         role = request.session.get('role')
         return render(request, 'blog/ЛК.html', {'user': user, 'role': role})
-    except Open3.DoesNotExist:
+    except Exception:
         return redirect('home')
 
 @login_required
@@ -669,7 +741,7 @@ def chat_page(request):
 @login_required
 def form_1(request, event_id=None):
     if event_id is None:
-        user = get_current_open1_user(request)
+        user = get_current_user(request)
         return render(request, 'blog/Форма_1.html', {'user': user})
 
     try:
@@ -738,41 +810,29 @@ def form_3(request, event_id):
 
 @login_required
 def profile_test(request):
-    # 1. Проверяем, есть ли email в URL (например: ?email=test_mentor@mail.com)
     target_email = request.GET.get('email')
-    
-    # 2. Получаем текущего авторизованного пользователя (для шапки сайта)
-    current_user = get_current_open1_user(request)
+    current_user = get_current_user(request)
 
     if target_email:
-        # Если кликнули из рейтинга — ищем данные этого специалиста
         try:
-            # Ищем в Open3, так как там лежат Имя, Фамилия, Телефон и т.д.
-            profile_data = Open3.objects.get(email=target_email)
-        except Open3.DoesNotExist:
-            # Если кто-то ввел кривую ссылку, просто возвращаем на главную
+            profile_data = get_profile_map_by_emails([target_email])[target_email]
+        except KeyError:
             return redirect('home')
     else:
-        # Если просто нажали кнопку "Профиль" в шапке сайта — показываем свои данные
-        try:
-            profile_data = Open3.objects.get(email=request.session['user_email'])
-        except Open3.DoesNotExist:
-            # Если профиль в Open3 еще не заполнен
-            profile_data = current_user
+        profile_data = current_user
 
-    # Передаем profile_data под ключом 'user', чтобы твой HTML шаблон (ЛК_тест.html) 
-    # ничего не заметил и продолжал выводить {{ user.name }}, {{ user.surname }} и т.д.
     return render(request, 'blog/ЛК.html', {
         'user': profile_data,
-        'current_user': current_user
+        'current_user': current_user,
+        'role': request.session.get('role'),
     })
 
 
 @login_required
 def edit_profile(request):
     # Получаем профиль текущего пользователя
-    user = get_current_open1_user(request)
-    profile = user.profile if hasattr(user, 'profile') else None
+    user = get_current_user(request)
+    profile = getattr(user, 'extra_data', None)
 
     if request.method == 'POST':
         form = ProfileForm(request.POST, instance=profile)
@@ -787,8 +847,8 @@ def edit_profile(request):
 
 @login_required
 def view_profile(request):
-    user = get_current_open1_user(request)
-    profile = user.profile if hasattr(user, 'profile') else None
+    user = get_current_user(request)
+    profile = getattr(user, 'extra_data', None)
 
     return render(request, 'Форма_1.html', {
         'user': user,
@@ -869,7 +929,7 @@ def chat_create_api(request):
         return JsonResponse({"ok": False, "error": "Можно добавлять только существующих стажёров."}, status=404)
 
     emails = [user.email for user in selected_users] + [current_user.email]
-    profile_map = get_open3_map_by_emails(emails)
+    profile_map = get_profile_map_by_emails(emails)
     title, subtitle = build_default_chat_title(selected_users, profile_map)
 
     with transaction.atomic():
@@ -1058,7 +1118,7 @@ def chat_add_participants_api(request):
             added_users.append(user)
 
         if added_users:
-            profile_map = get_open3_map_by_emails([item.email for item in added_users])
+            profile_map = get_profile_map_by_emails([item.email for item in added_users])
             added_names = ", ".join(
                 get_user_display_name(item, profile_map)
                 for item in added_users
@@ -1179,7 +1239,7 @@ def chat_forward_message_api(request):
     if source_message.sender:
         forwarded_from_name = get_user_message_label(
             source_message.sender,
-            get_open3_map_by_emails([source_message.sender.email]),
+        get_profile_map_by_emails([source_message.sender.email]),
         )
 
     with transaction.atomic():
@@ -1220,7 +1280,7 @@ def chat_delete_api(request):
 
     display_name = get_user_display_name(
         current_user,
-        get_open3_map_by_emails([current_user.email])
+        get_profile_map_by_emails([current_user.email])
     )
 
     chat = participant.chat
@@ -1266,37 +1326,12 @@ def get_current_user(request):
             return None
     return None
 
-def get_current_open3_user(request):
-    email = request.session.get('user_email')
-    if not email:
-        return None
-    try:
-        return Open3.objects.get(email=email)
-    except Open3.DoesNotExist:
-        return None
-
-def ensure_open1_and_open3(email, name="", patronymic="", surname="", phone="", role="intern"):
-    """Создаёт/получает Open1, Open3, Users для совместимости."""
-    open1, _ = Open1.objects.get_or_create(email=email, defaults={'pa': ''})
-    open3, _ = Open3.objects.get_or_create(
-        email=email,
-        defaults={
-            'name': name,
-            'patronymic': patronymic,
-            'surname': surname,
-            'phone': phone,
-            'pa': ''
-        }
-    )
-    Users.objects.get_or_create(email=email, defaults={'role': role})
-    return open1, open3
-
 def get_current_users_user(request):
-    email = request.session.get('user_email')
-    if not email:
+    profile = get_current_user(request)
+    if not profile:
         return None
     role = request.session.get('role', 'intern')
-    user, _ = Users.objects.get_or_create(email=email, defaults={'role': role})
+    user, _ = Users.objects.get_or_create(email=profile.email, defaults={'role': role})
     return user
 
 
@@ -1308,7 +1343,7 @@ def logout_view(request):
 @login_required
 def test_review_page(request):
     # Получаем всех специалистов из базы данных
-    specialists = Open3.objects.all()
+    specialists = list(Mentors.objects.all()) + list(Interns.objects.all())
     
     # Передаем их в шаблон под ключом 'specialists'
     return render(request, 'blog/Оценка.html', {'specialists': specialists})

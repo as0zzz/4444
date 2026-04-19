@@ -11,7 +11,6 @@ urlpatterns = [
     path('rating/', views.submit_review, name='review'),
     path('test-review/', views.test_review_page, name='test_review_page'),
 
-    path('open_2/', views.open_2, name='open_2'),
     path('open_3/', views.open_3, name='open_3'),
     path('home/', views.home, name='home'),
     path('profile/', views.profile, name='profile'),
@@ -31,6 +30,7 @@ urlpatterns = [
     path('profile_test/', views.profile_test, name='profile_test'),
     path('event/<int:event_id>/', views.form_1, name='form_1'),
     path('form_3/<int:event_id>/', views.form_3, name='form_3'),
+    path('verify_code/', views.verify_code, name='verify_code'),
 
     path('profile/view/', views.view_profile, name='view_profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
